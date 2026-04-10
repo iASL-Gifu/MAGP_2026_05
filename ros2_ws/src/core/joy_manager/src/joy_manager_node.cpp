@@ -118,7 +118,7 @@ private:
     // 2) Joyモードでの速度・ステア算出
     if (joy_active_) {
       double raw_speed = (msg->axes.size() > 1 ? msg->axes[1] : 0.0);
-      double raw_steer = (msg->axes.size() > 3 ? msg->axes[2] : 0.0);
+      double raw_steer = (msg->axes.size() > 2 ? msg->axes[2] : 0.0);
       joy_speed_ = raw_speed * speed_scale_;
       joy_steer_ = raw_steer * steer_scale_;
     }
