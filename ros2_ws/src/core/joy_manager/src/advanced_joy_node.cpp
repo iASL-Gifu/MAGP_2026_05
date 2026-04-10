@@ -39,7 +39,7 @@ public:
 
     // [変更] 軸の割り当て
     declare_parameter<int>("speed_axis", 1); // 左スティック上下
-    declare_parameter<int>("steer_axis", 3); // 右スティック左右
+    declare_parameter<int>("steer_axis", 2); // 右スティック左右
 
     // [変更] スケール関連
     declare_parameter<double>("speed_scale", 1.0);
