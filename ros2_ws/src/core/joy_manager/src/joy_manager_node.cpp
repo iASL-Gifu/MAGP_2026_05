@@ -29,11 +29,11 @@ public:
     prev_scale_dec_pressed_(false)
   {
     // --- パラメータ宣言＆取得 ---
-    declare_parameter<double>("speed_scale", 1.0);
+    declare_parameter<double>("speed_scale", 0.5);
     declare_parameter<double>("steer_scale", 1.0);
-    declare_parameter<int>("joy_button_index",   2);
-    declare_parameter<int>("ack_button_index",   3);
-    declare_parameter<int>("start_button_index", 9);
+    declare_parameter<int>("joy_button_index",   3);
+    declare_parameter<int>("ack_button_index",   0);
+    declare_parameter<int>("start_button_index", 7);
     declare_parameter<int>("stop_button_index",  8);
     declare_parameter<double>("timer_hz", 40.0);
     declare_parameter<double>("joy_timeout_sec", 0.5); // 例: 0.5秒間Joyメッセージが来なければ停止
@@ -118,7 +118,7 @@ private:
     // 2) Joyモードでの速度・ステア算出
     if (joy_active_) {
       double raw_speed = (msg->axes.size() > 1 ? msg->axes[1] : 0.0);
-      double raw_steer = (msg->axes.size() > 3 ? msg->axes[3] : 0.0); // foxy: axes[2], humble: axes[3]
+      double raw_steer = (msg->axes.size() > 3 ? msg->axes[2] : 0.0);
       joy_speed_ = raw_speed * speed_scale_;
       joy_steer_ = raw_steer * steer_scale_;
     }
