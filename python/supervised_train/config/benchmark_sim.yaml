@@ -8,10 +8,9 @@ model_name: "TinyLidarNet"
 input_dim: 1080
 output_dim: 2
 sequence_length: 10
-ckpt_path: ???
+ckpt_path: ckpts/model_epoch_23_loss_0.0001.pth
 
-benchmark_dir: ./benchmarks/
-
+benchmark_dir: ./benchmarks/model_epoch_23_loss_0.0001
 
 envs:
   timestep: 0.01 ## シミュレータの時間間隔

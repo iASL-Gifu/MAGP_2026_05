@@ -124,16 +124,31 @@ def first_point_on_trajectory_intersecting_circle(point, radius, trajectory, t=0
 
 @njit(fastmath=False, cache=True)
 def get_actuation(pose_theta, lookahead_point, position, lookahead_distance, wheelbase):
-    """
-    Returns actuation
-    """
-    waypoint_y = np.dot(np.array([np.sin(-pose_theta), np.cos(-pose_theta)]), lookahead_point[0:2]-position)
+    # ターゲットまでの相対距離
+    dx = lookahead_point[0] - position[0]
+    dy = lookahead_point[1] - position[1]
+
+    # ターゲットへの絶対角度
+    target_angle = np.arctan2(dy, dx)
+    alpha = target_angle - pose_theta
+    
+    # 正規化
+    if alpha > np.pi:
+        alpha -= 2.0 * np.pi
+    elif alpha < -np.pi:
+        alpha += 2.0 * np.pi
+    
+    # 車体座標系への変換
+    rel_y = lookahead_distance * np.sin(alpha)
+    
     speed = lookahead_point[2]
-    if np.abs(waypoint_y) < 1e-6:
-        return speed, 0.
-    radius = 1/(2.0*waypoint_y/lookahead_distance**2)
-    steering_angle = np.arctan(wheelbase/radius)
-    return speed, steering_angle
+    if np.abs(rel_y) < 1e-6:
+        return speed, 0.0, alpha
+    
+    # 曲率半径 R = L^2 / 2y
+    steering_angle = np.arctan(2.0 * wheelbase * rel_y / (lookahead_distance**2))
+    
+    return speed, steering_angle, alpha
 
 class PurePursuitPlanner:
     """
@@ -149,6 +164,7 @@ class PurePursuitPlanner:
         self.max_reacquire = max_reacquire
         self.lookahead = lookahead
         self.gain = gain
+        self.prev_steer = 0.0
     
     def update_map(self, map_manager):
         self.map_manager = map_manager
@@ -158,17 +174,30 @@ class PurePursuitPlanner:
         """
         gets the current waypoint to follow
         """
-        wpts = np.vstack((self.map_manager.waypoints[:, self.wpt_xind], self.map_manager.waypoints[:, self.wpt_yind])).T
+        wpts = np.vstack((
+            self.map_manager.waypoints[:, self.wpt_xind],
+            self.map_manager.waypoints[:, self.wpt_yind]
+        )).T.astype(np.float64)
         nearest_point, nearest_dist, t, i = nearest_point_on_trajectory(position, wpts)
         if nearest_dist < lookahead_distance:
-            lookahead_point, i2, t2 = first_point_on_trajectory_intersecting_circle(position, lookahead_distance, wpts, i+t, wrap=True)
-            if i2 == None:
+
+            lookahead_point, i2, t2 = first_point_on_trajectory_intersecting_circle(
+                position,
+                float(lookahead_distance),
+                wpts,
+                float(i+t),
+                wrap=True
+            )
+
+            if i2 is None:
                 return None
-            current_waypoint = np.empty((3, ))
+
+            current_waypoint = np.empty((3, ), dtype=np.float64)
             # x, y
             current_waypoint[0:2] = wpts[i2, :]
             # speed
-            current_waypoint[2] = waypoints[i, self.wpt_vind]
+            speed_lookahead_idx = (i2 + 10) % len(waypoints)  ## ハンドル目標点から更に先の速度を見る
+            current_waypoint[2] = waypoints[speed_lookahead_idx, self.wpt_vind]
             return current_waypoint
         elif nearest_dist < self.max_reacquire:
             return np.append(wpts[i, :], waypoints[i, self.wpt_vind])
@@ -179,21 +208,71 @@ class PurePursuitPlanner:
         """
         gives actuation given observation
         """
-        position = np.array([obs['poses_x'][id], obs['poses_y'][id]])
-        lookahead_distance = self.lookahead + self.gain * obs['linear_vels_x'][0]
-        # lookahead_distance = self.lookahead
-        theta = obs['poses_theta'][id]
+        agent_id = f'agent_{id}'
+
+        ego_state = obs[agent_id]['state']
+
+        # Pure_pursuit.py の plan メソッド内
+        ego_state = obs[agent_id]['state']
+
+        position = np.array(ego_state[:2], dtype=np.float64)
+        theta = float(ego_state[4])
+        current_velocity = float(ego_state[3])
+
+        lookahead_distance = float(self.lookahead + self.gain * current_velocity)
+
+        all_waypoints = self.map_manager.waypoints.astype(np.float64)
+
+        # 最小距離のガード（0除算防止）
+        if lookahead_distance < 0.01:
+            lookahead_distance = 0.5
         
-        lookahead_point = self._get_current_waypoint(self.map_manager.waypoints, lookahead_distance, position, theta)
+        lookahead_point = self._get_current_waypoint(all_waypoints, lookahead_distance, position, theta)
+
+        if lookahead_point is not None:
+            lookahead_point = lookahead_point.astype(np.float64)
 
         if lookahead_point is None:
-            return 4.0, 0.0
+            return 0.0, 2.0
 
-        vgain = 0.97
-        speed, steering_angle = get_actuation(theta, lookahead_point, position, lookahead_distance, self.wheelbase)
+        lookahead_point = lookahead_point.astype(np.float64)
+        wheelbase = float(self.wheelbase)
+
+        speed, steering_angle, alpha = get_actuation(
+            theta,
+            lookahead_point,
+            position,
+            lookahead_distance,
+            wheelbase
+        )
+
+        # --- ステアリングのスムージング---
+        # 0.7 と 0.3 の比率は調整可能です。を大きくするほど動きがマイルドになります。
+        smoothing_alpha = 0.4
+        smoothed_steer = (1.0 - smoothing_alpha) * self.prev_steer + smoothing_alpha * steering_angle
+        
+        # --- 速度に応じた Pゲインの抑制 ---
+        # 速度が速いときに、ステアリングの反応を少し鈍くします
+        if speed > 3.5:
+            # 速度が上がるほど 0.8倍、0.7倍...と反応を抑える
+            speed_factor = np.clip(1.0 - (speed - 4.0) * 0.05, 0.6, 1.0)
+            smoothed_steer *= speed_factor
+
+        # --- デッドバンドの導入 ---
+        # 直線での微小なガタつきを無視する
+        if np.abs(smoothed_steer) < 0.005:
+            smoothed_steer = 0.0
+
+        # 次回の計算のために保存
+        self.prev_steer = smoothed_steer
+
+        if np.abs(steering_angle) > 0.35: # ハンドルを大きく切っている時
+            speed *= 0.8 # さらに20%減速して曲がりやすくする
+
+
+        # 最終的な速度調整
+        vgain = np.float32(0.85)
         speed = vgain * speed
+        
 
-        return steering_angle, speed
-
-
-
+        return float(steering_angle), float(speed)

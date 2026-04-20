@@ -12,7 +12,7 @@ ckpt_path: "./ckpts"
 model_name: "TinyLidarNet" 
 
 # --- モデルパラメータ ---
-input_dim: 1081
+input_dim: 1080
 output_dim: 2
 sequence_length: 10
 range_max: 30.0

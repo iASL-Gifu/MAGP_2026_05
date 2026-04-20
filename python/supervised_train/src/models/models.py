@@ -15,7 +15,10 @@ from .cnn import (
     TinyLidarActionConvLstmNet,
     TinyLidarConvTransformerNet
 )
-from .gnn import LidarGCN, LidarGcnLstmNet, LidarGAT, LidarGatLstmNet
+
+### 一旦コメントアウトしておきます
+#from .gnn import LidarGCN, LidarGcnLstmNet, LidarGAT, LidarGatLstmNet
+
 from .maxt import LidarRegressor, get_model_cfg 
 from ..utils.helper import get_model_size_in_m
 
