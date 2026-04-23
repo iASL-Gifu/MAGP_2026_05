@@ -1,16 +1,11 @@
-num_steps: 10000
-render: true
-render_mode: human_fast
-
-model_name: "TinyLidarActionLstmNet" 
-
-# --- モデルパラメータ ---
-input_dim: 1080
-output_dim: 2
-sequence_length: 10
-ckpt_path: ckpts/4-23-17-46.zip
-
-benchmark_dir: ./benchmarks/4-23-17-46
+# config/ppo_config.yaml
+model_name: "TinyLidarActionLstmPPO"
+total_timesteps: 1000000
+learning_rate: 0.0003
+batch_size: 64
+gamma: 0.99
+gae_lambda: 0.95
+n_steps: 2048
 
 envs:
   timestep: 0.01 ## シミュレータの時間間隔
@@ -53,6 +48,6 @@ vehicle:
   width: 0.31
   length: 0.58
 
-hydra:
-  run:
-    dir: ./outputs/train/${now:%Y-%m-%d}/${now:%H-%M-%S}
+# 学習保存設定
+save_path: "./ckpts/ppo_model"
+log_dir: "./logs/ppo_training"

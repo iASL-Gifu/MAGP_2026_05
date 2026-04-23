@@ -4,8 +4,6 @@ import numpy as np
 import torch
 import hydra
 from omegaconf import DictConfig, OmegaConf
-#from f1tenth_gym.maps.map_manager import MapManager
-# from f1tenth_gym.maps.map_manager import TEST_MAPS as MAP_DICT
 from src.envs.envs import make_env
 from src.models.models import load_cnn_model
 from src.envs.envs import MapManagerAdapter

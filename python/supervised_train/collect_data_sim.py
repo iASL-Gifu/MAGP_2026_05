@@ -79,10 +79,6 @@ def main(cfg: DictConfig):
             for step in range(num_steps):
                 steer, speed = planner.plan(obs)
 
-                ### デバッグ用 ###
-                # speed = 2.0
-                #################
-
                 action = np.array([steer, speed], dtype='float32').reshape(1, 2)
                 scan = obs['agent_0']['scan'].astype('float32')
 

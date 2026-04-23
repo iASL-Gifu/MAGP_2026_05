@@ -217,3 +217,79 @@ class F110Wrapper(gym.Wrapper):
             if not hasattr(self, '_render_err'):
                 print(f"[DEBUG] Render Attempt Failed Again: {e}")
                 self._render_err = True
+
+
+class PPOWrapper(F110Wrapper):
+    """
+    強化学習 (Stable Baselines3) のために Gymnasium 仕様に準拠させたラッパー。
+    """
+    def __init__(self, env, map_manager):
+        super().__init__(env, map_manager)
+        
+        # PPOが観測データとアクションの範囲を理解するために必須の定義
+        # LiDARスキャンは 1080次元、距離は 0.0〜30.0m
+        self.observation_space = gym.spaces.Box(
+            low=0.0, high=30.0, shape=(1080,), dtype=np.float32
+        )
+        # アクションは ステアリング(-0.4~0.4) と 速度(0.0~10.0) の2次元
+        self.action_space = gym.spaces.Box(
+            low=np.array([-0.4, 0.0], dtype=np.float32), 
+            high=np.array([0.4, 10.0], dtype=np.float32), 
+            dtype=np.float32
+        )
+
+    def step(self, action):
+        # 1. PPOから来る action は shape=(2,) です。
+        # シミュレータが期待する shape=(1, 2) に変換します。
+        if action.ndim == 1:
+            action = action.reshape(1, -1)
+
+        # 2. 親クラスの step を実行して辞書形式の obs を取得
+        obs, reward, terminated, truncated, info = super().step(action)
+        
+        # 3. 強化学習用に obs を配列に変換 (LiDARデータのみ抽出)
+        lidar_obs = obs['agent_0']['scan'].astype(np.float32)
+
+        # 衝突判定
+        collision_val = obs['agent_0'].get('collision', 0)
+        # 1.0 または True なら衝突とみなす
+        info['collision'] = bool(collision_val > 0)
+        
+        # --- 報酬関数 ---
+        if info.get('collision', False):
+            reward = -1000.0  # 元の関数に合わせ、強力なペナルティ
+        else:
+            # 1. 速度成分（vs: 接線方向速度, vd: 法線方向速度）
+            # velocity は linear_vels_x です。
+            vs = info.get('velocity', 0.0) 
+            # 速度が遅すぎる場合（停滞）へのペナルティ
+            reward = 0.01
+            if abs(vs) <= 0.25:
+                reward -= 2.0
+            
+            # 2. 進捗報酬 (vsを最大化)
+            reward += 1.0 * vs
+            
+            # 3. センター維持 (d: center line からの距離)
+            # frenet_pose[1] が center line からの lateral error (d)
+            d = obs['agent_0']['frenet_pose'][1]
+            reward -= 0.05 * abs(d)
+            
+            # 4. 滑らかさ (w: 角速度)
+            w = info.get('angular_vel', 0.0)
+            reward -= 0.05 * abs(w)
+            
+            # 5. 壁への接近回避 (scans)
+            scans = obs['agent_0']['scan']
+            min_distance = np.min(scans)
+            distance_threshold = 0.5
+            if min_distance < distance_threshold:
+                reward -= 0.01 * (distance_threshold - min_distance)
+
+        return lidar_obs, float(reward), terminated, truncated, info
+
+    def reset(self, **kwargs):
+        # 1. 親クラスの reset を実行
+        obs, info = super().reset(**kwargs)
+        # 2. LiDAR配列を返却
+        return obs['agent_0']['scan'].astype(np.float32), info
