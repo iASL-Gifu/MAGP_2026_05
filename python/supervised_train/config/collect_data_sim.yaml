@@ -9,7 +9,7 @@ data:
 
 envs:
   timestep: 0.1 ## シミュレータの時間間隔  ## 0.01
-  num_beams: 1080 ## 2d Lidarのビーム数
+  num_beams: 1081 ## 2d Lidarのビーム数
   beam_fov: 4.7 ## 2d Lidarの範囲 -135° ~ 135°
   max_beam_range: 30.0 ## 2d Lidarの最大距離
   num_agents: 1

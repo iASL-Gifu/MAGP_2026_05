@@ -1,7 +1,7 @@
 # config/train_cnn.yaml
 
 # --- 基本設定 ---
-data_path: "./datasets/"
+data_path: "./datasets/real"  
 ckpt_path: "./ckpts"
 
 ## model パラメータ
@@ -12,7 +12,7 @@ ckpt_path: "./ckpts"
 model_name: "TinyLidarActionLstmNet" 
 
 # --- モデルパラメータ ---
-input_dim: 1080
+input_dim: 1081
 output_dim: 2
 sequence_length: 10
 range_max: 30.0
