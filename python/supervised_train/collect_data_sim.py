@@ -3,7 +3,9 @@ import numpy as np
 import hydra
 from datetime import datetime
 from omegaconf import DictConfig, OmegaConf
-from src.envs.envs import make_env, MapManagerAdapter
+from src.envs.envs import make_env
+from f1tenth_gym.maps.map_manager import MapManager
+from f1tenth_gym.maps.map_manager import TRAIN_MAPS as MAP_DICT
 from src.planner.purePursuit import PurePursuitPlanner
 
 @hydra.main(config_path="config", config_name="collect_data_sim", version_base="1.2")
@@ -15,7 +17,6 @@ def main(cfg: DictConfig):
     run_id   = datetime.now().strftime("%Y%m%d_%H%M%S")
     out_root = os.path.join(base_out, run_id)
     os.makedirs(out_root, exist_ok=True)
-    MAP_DICT = [cfg.envs.map.name]  # Configから取得するようにすると柔軟です
 
     # マップごとのディレクトリを事前に作成 (これは残しておくと全体構造が分かりやすい)
     for map_name in MAP_DICT:
@@ -23,12 +24,16 @@ def main(cfg: DictConfig):
 
     # 環境とプランナーの初期化
     map_cfg     = cfg.envs.map
-    map_manager = MapManagerAdapter(
-        track_name=MAP_DICT[0], 
-        line_type=cfg.envs.map.line_type  # YAMLの envs: map: line_type を渡す
+    map_manager = MapManager(
+        map_name=MAP_DICT[0],
+        map_ext=map_cfg.ext,
+        speed=map_cfg.speed,
+        downsample=map_cfg.downsample,
+        use_dynamic_speed=map_cfg.use_dynamic_speed,
+        a_lat_max=map_cfg.a_lat_max,
+        smooth_sigma=map_cfg.smooth_sigma
     )
     env = make_env(env_cfg=cfg.envs, map_manager=map_manager, param=cfg.vehicle)
-    # print(f"DEBUG: Searching for map yaml near: {os.path.abspath(cfg.envs.map.name + '.yaml')}")
 
     wheelbase = cfg.planner.wheelbase
     lookahead = cfg.planner.lookahead
@@ -78,15 +83,12 @@ def main(cfg: DictConfig):
 
             for step in range(num_steps):
                 steer, speed = planner.plan(obs)
-
                 action = np.array([steer, speed], dtype='float32').reshape(1, 2)
-                scan = obs['agent_0']['scan'].astype('float32')
+                scan = np.array(obs['scans']).astype('float32').squeeze(axis=0)
 
                 wpts = map_manager.get_future_waypoints(
                     current_pos, num_points=num_waypoints
                 ).astype('float32')
-
-                wpts = wpts[:, :3]
                 if wpts.shape[0] < num_waypoints:
                     pad = np.repeat(wpts[-1][None, :], num_waypoints - wpts.shape[0], axis=0)
                     wpts = np.vstack([wpts, pad])
@@ -100,27 +102,13 @@ def main(cfg: DictConfig):
                 actions.append(action)
 
                 next_obs, reward, terminated, truncated, info = env.step(action)
-
-                '''
-                # --- 速度デバッグログを追加 ---
-                if step % 20 == 0:
-                    # シミュレータ上の実際の速度を取得
-                    actual_speed = next_obs['agent_0']['state'][3] # state[3] は通常 vx (速度)
-                    
-                    print(f"[{name}] Step:{step:03d} | Target:{speed:5.2f}m/s | Actual:{actual_speed:5.2f}m/s")
-                    
-                    # 速度に変化があるかチェックするための補助表示
-                    if speed < 7.0:
-                        print(f"  >>> Slowing down for curve: {speed:.2f}m/s")
-                # ------------------------------
-                '''
-
                 if truncated:
                     print(f"Episode terminated or truncated at step {step + 1}.")
                     break
+
                 obs = next_obs
                 prev_action = action
-                current_pos = next_obs['agent_0']['state'][:2]
+                current_pos = info.get('current_pos', current_pos)
 
                 if render_flag:
                     env.render(mode=render_mode) if render_mode else env.render()

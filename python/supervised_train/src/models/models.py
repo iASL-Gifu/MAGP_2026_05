@@ -13,12 +13,9 @@ from .cnn import (
     TinyLidarActionNet,
     TinyLidarActionLstmNet,
     TinyLidarActionConvLstmNet,
-    TinyLidarConvTransformerNet,
-    TinyLidarActionLstmPPO
+    TinyLidarConvTransformerNet
 )
-
 from .gnn import LidarGCN, LidarGcnLstmNet, LidarGAT, LidarGatLstmNet
-
 from .maxt import LidarRegressor, get_model_cfg 
 from ..utils.helper import get_model_size_in_m
 
@@ -77,8 +74,6 @@ def load_cnn_model(model_name, input_dim, output_dim, compile_model: bool = Fals
                                            num_encoder_layers=2,
                                            dim_feedforward=256,
                                            dropout=0.1)
-    elif model_name == 'TinyLidarActionLstmPPO':
-        model = TinyLidarActionLstmPPO(input_dim, output_dim)
     else:
         raise ValueError(f"Unknown model name: {model_name}")
     

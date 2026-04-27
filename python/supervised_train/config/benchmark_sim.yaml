@@ -1,16 +1,17 @@
 num_steps: 10000
-render: true
+render: false
 render_mode: human_fast
 
-model_name: "TinyLidarActionLstmNet"
+model_name: "TinyLidarNet" 
 
 # --- モデルパラメータ ---
 input_dim: 1080
 output_dim: 2
 sequence_length: 10
-ckpt_path: ckpts/lstm_real.pth
+ckpt_path: ???
 
-benchmark_dir: ./benchmarks/lstm_real
+benchmark_dir: ./benchmarks/
+
 
 envs:
   timestep: 0.01 ## シミュレータの時間間隔
@@ -22,7 +23,7 @@ envs:
   speed_range: 10.0 ## 車両の速度範囲
   render_mode: human_fast ## human or human_fast
   map:
-    name: IMS  ## マップの名前
+    name: IMS ## マップの名前
     ext: .png ## マップの拡張子
     line_type: center ## center or race
     speed: 8.0 ## waypointの速度

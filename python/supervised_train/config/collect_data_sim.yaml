@@ -1,15 +1,15 @@
 output_dir: ./datasets/sim/
-num_sets: 6 ## train 15 map,  test 6maps
+num_sets: 2 ## train 15 map,  test 6maps
 num_steps: 10000
-render: true
+render: false
 render_mode: human_fast
 
 data:
-  num_waypoints: 10    ### 10 から大きくしました
+  num_waypoints: 10
 
 envs:
-  timestep: 0.1 ## シミュレータの時間間隔  ## 0.01
-  num_beams: 1081 ## 2d Lidarのビーム数
+  timestep: 0.01 ## シミュレータの時間間隔
+  num_beams: 1080 ## 2d Lidarのビーム数
   beam_fov: 4.7 ## 2d Lidarの範囲 -135° ~ 135°
   max_beam_range: 30.0 ## 2d Lidarの最大距離
   num_agents: 1
@@ -17,7 +17,7 @@ envs:
   speed_range: 10.0 ## 車両の速度範囲
   render_mode: human_fast ## human or human_fast
   map:
-    name: Austin ## マップの名前
+    name: IMS ## マップの名前
     ext: .png ## マップの拡張子
     line_type: center ## center or race
     speed: 8.0 ## waypointの速度
@@ -30,8 +30,8 @@ envs:
 
 planner:
   wheelbase: 0.33 ## そのままで良い
-  lookahead: 0.3 ##0.56 ## 前方を見る距離                  ### 0.56 から大きくしました
-  gain: 0.3  ##0.2 ## 速度に応じて前方を見る距離を変える時の倍率
+  lookahead: 0.56 ## 前方を見る距離
+  gain: 0.2 ## 速度に応じて前方を見る距離を変える時の倍率
   max_reacquire: 20.0 ## そのままで良い
 
 vehicle:

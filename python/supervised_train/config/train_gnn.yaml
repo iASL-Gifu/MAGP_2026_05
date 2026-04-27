@@ -34,4 +34,4 @@ num_workers: 10      # ランダムローダ用のnum_workers
 
 hydra:
   run:
-    dir: ./outputs/train_gnn/${now:%Y-%m-%d}/${now:%H-%M-%S}
+    dir: ./outputs/train_cnn/${now:%Y-%m-%d}/${now:%H-%M-%S}

@@ -262,7 +262,7 @@ class TinyLidarActionLstmNet(nn.Module):
         cnn_features = F.relu(self.conv5(cnn_features))
         cnn_features = cnn_features.view(batch_size, seq_len, self.flatten_dim)
         if pre_action.dim() == len(cnn_features.shape) -1:
-             pre_action = pre_action.unsqueeze(1)
+             pre_action = pre_action.unsqueeze(-1)
         lstm_input = torch.cat((cnn_features, pre_action), dim=2)
         lstm_out, hidden = self.lstm(lstm_input, hidden)
         if self.training:
@@ -401,44 +401,3 @@ class TinyLidarConvTransformerNet(nn.Module):
             out = F.relu(self.fc3(out))
             out = torch.tanh(self.fc4(out))
         return out
-    
-
-class TinyLidarActionLstmPPO(TinyLidarActionLstmNet):
-    def __init__(self, input_dim, output_dim, action_dim=2, lstm_hidden_dim=128, lstm_layers=1):
-        super().__init__(input_dim, output_dim, action_dim, lstm_hidden_dim, lstm_layers)
-        
-        # Criticヘッドの追加: LSTMの出力を入力とする
-        # Actorヘッドは継承元の fc1~fc4 をそのまま利用します
-        self.fc_v1 = nn.Linear(lstm_hidden_dim, 64)
-        self.fc_v2 = nn.Linear(64, 1) # 価値(Value)の出力
-
-    def forward(self, x, pre_action, hidden=None):
-        # 1. 特徴抽出・LSTM処理 (基底クラスの処理を利用)
-        # 既存のforwardロジックを流用し、LSTMの出力まで取得
-        if x.dim() == 2:
-            x = x.unsqueeze(1)
-        batch_size, seq_len, length = x.shape
-        cnn_features = x.view(batch_size * seq_len, length).unsqueeze(1)
-        cnn_features = F.relu(self.conv1(cnn_features))
-        cnn_features = F.relu(self.conv2(cnn_features))
-        cnn_features = F.relu(self.conv3(cnn_features))
-        cnn_features = F.relu(self.conv4(cnn_features))
-        cnn_features = F.relu(self.conv5(cnn_features))
-        cnn_features = cnn_features.view(batch_size, seq_len, self.flatten_dim)
-        
-        if pre_action.dim() == len(cnn_features.shape) - 1:
-             pre_action = pre_action.unsqueeze(-1)
-        lstm_input = torch.cat((cnn_features, pre_action), dim=2)
-        lstm_out, hidden = self.lstm(lstm_input, hidden)
-        
-        # 2. Actor出力 (行動)
-        out = F.relu(self.fc1(lstm_out))
-        out = F.relu(self.fc2(out))
-        out = F.relu(self.fc3(out))
-        action = torch.tanh(self.fc4(out)) # [B, Seq, Out]
-        
-        # 3. Critic出力 (価値)
-        value = F.relu(self.fc_v1(lstm_out))
-        value = self.fc_v2(value) # [B, Seq, 1]
-        
-        return action, value, hidden
