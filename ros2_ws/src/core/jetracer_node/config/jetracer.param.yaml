@@ -2,7 +2,7 @@
   ros__parameters:
     throttle_inversion: True
     steering_inversion: False
-    throttle_gain: 1.0
+    throttle_gain: 0.5
     steering_gain: 1.0
     steering_offset: 0.145
     throttle_offset: 0.0
