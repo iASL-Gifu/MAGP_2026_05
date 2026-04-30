@@ -4,9 +4,9 @@
 ## TinyLidarLstmNet, TinyLidarConvLstmNet
 ## TinyLidarActionLstmNet, TinyLidarActionConvLstmNet
 ## TinyLidarConvTransformerNet
-    model_name: TinyLidarNet
-    model_path: .pt
+    model_name: TinyLidarActionLstmNet
+    model_path: /home/tamiya/E2ETENTH-2025-JP/ros2_ws/src/control/e2e_controller/e2e_controller/models/lstm_real.pth
     max_range: 30.0
-    input_dim: 1081
+    input_dim: 1080
     output_dim: 2
     sequence_length: 1

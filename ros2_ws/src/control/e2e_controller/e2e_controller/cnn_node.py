@@ -19,10 +19,10 @@ class CNNNode(Node):
         self.get_logger().info(f"[DEVICE] Using device: {self.device}")
 
         # --- パラメータ宣言 ---
-        self.declare_parameter('model_name', 'TinyLidarNet')
-        self.declare_parameter('model_path', 'model.pth')
+        self.declare_parameter('model_name', 'TinyLidarActionLstmNet')
+        self.declare_parameter('model_path', '/home/tamiya/E2ETENTH-2025-JP/ros2_ws/src/control/e2e_controller/e2e_controller/models/lstm_real.pth')
         self.declare_parameter('max_range', 30.0)
-        self.declare_parameter('input_dim', 181) # 各スキャンフレームのLiDARデータ次元
+        self.declare_parameter('input_dim', 1080) # 各スキャンフレームのLiDARデータ次元
         self.declare_parameter('output_dim', 2)
         self.declare_parameter('sequence_length', 1) 
 
@@ -45,7 +45,7 @@ class CNNNode(Node):
 
         # ROS I/O
         self.subscription = self.create_subscription(LaserScan, '/scan', self.scan_callback, 10)
-        self.publisher = self.create_publisher(AckermannDrive, '/cmd_drive', 10)
+        self.publisher = self.create_publisher(AckermannDrive, '/ackermann_cmd', 10)
 
         self.get_logger().info(f"[STARTED] Node is ready. Model: {self.model_name}")
         self.get_logger().info(f"  > Derived flags: IsRNN={self.is_rnn}, UsePrevAction={self.use_prev_action}")
@@ -163,7 +163,11 @@ class CNNNode(Node):
         
     def scan_callback(self, msg):
         if self.model is None:
-            self.get_logger().warn("Model is not loaded, skipping inference.", throttle_skip_first=True, throttle_time_sec=5.0)
+            self.get_logger().warn(
+                    "Model is not loaded, skipping inference.", 
+                    #throttle_skip_first=True,
+                    throttle_time_sec=5.0
+                    )
             return
             
         # --- 1. LiDARデータを準備し、バッファに追加 ---
@@ -198,12 +202,19 @@ class CNNNode(Node):
                 # --- 入力テンソルを準備 ---
                 # scan_tensor: [B, T, L] (バッチサイズ, シーケンス長, 特徴量次元)
                 # ここではバッチサイズ1なので [1, sequence_length, input_dim]
-                scan_tensor = torch.tensor(scan_sequence, dtype=torch.float32).unsqueeze(0).to(self.device)
-                
+               # scan_tensor = torch.tensor(scan_sequence, dtype=torch.float32).unsqueeze(0).to(self.device)
+                scan_tensor = torch.tensor(scan_sequence, dtype=torch.float32)
+
+                if self.is_rnn:
+                    scan_tensor = scan_tensor.unsqueeze(0)
+                else:
+                    scan_tensor = scan_tensor.squeeze(0).unsqueeze(0).unsqueeze(0)
+                scan_tensor = scan_tensor.to(self.device)
+
                 prev_action_tensor = None
                 if self.use_prev_action:
                     # prev_action_tensor: [B, A] または [B, T, A] (モデルの入力による)
-                    prev_action_tensor = torch.tensor(self.prev_action, dtype=torch.float32).unsqueeze(0).to(self.device)
+                    prev_action_tensor = torch.tensor(self.prev_action, dtype=torch.float32).unsqueeze(0).unsqueeze(0).to(self.device)
 
                 output = None
                 

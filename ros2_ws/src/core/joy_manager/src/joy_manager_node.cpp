@@ -57,7 +57,7 @@ public:
     ack_sub_ = create_subscription<ackermann_msgs::msg::AckermannDrive>(
       "/ackermann_cmd", 10, std::bind(&JoyManagerNode::ack_callback, this, _1));
 
-    drive_pub_   = create_publisher<ackermann_msgs::msg::AckermannDrive>("/cmd_drive", 10);
+    drive_pub_   = create_publisher<ackermann_msgs::msg::AckermannDrive>("/jetracer/cmd_drive", 10);
     trigger_pub_ = create_publisher<std_msgs::msg::Bool>("/rosbag2_recorder/trigger", 10);
 
     // オフセット調整用トリガー
@@ -108,7 +108,7 @@ private:
     bool ack_pressed = (msg->buttons.size() > ack_button_index_
                         && msg->buttons[ack_button_index_] == 1);
     if (ack_pressed) {
-      ack_active_ = true; joy_active_ = false;
+      ack_active_ = true; joy_active_ = false;    
     } else if (joy_pressed) {
       joy_active_ = true; ack_active_ = false;
     } else {
@@ -118,7 +118,7 @@ private:
     // 2) Joyモードでの速度・ステア算出
     if (joy_active_) {
       double raw_speed = (msg->axes.size() > 1 ? msg->axes[1] : 0.0);
-      double raw_steer = (msg->axes.size() > 3 ? msg->axes[3] : 0.0); // foxy: axes[2], humble: axes[3]
+      double raw_steer = (msg->axes.size() > 2 ? msg->axes[2] : 0.0); // foxy: axes[2], humble: axes[3]
       joy_speed_ = raw_speed * speed_scale_;
       joy_steer_ = raw_steer * steer_scale_;
     }
