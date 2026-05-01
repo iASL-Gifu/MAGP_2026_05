@@ -57,7 +57,6 @@ def main(cfg: DictConfig):
     for set_idx in range(num_sets): # セット数のループ
         print(f"\n--- Data Collection Set: {set_idx + 1}/{num_sets} ---")
         for map_id, name in enumerate(MAP_DICT): # 各マップのループ
-            env.update_map(map_name=name, map_ext=map_cfg.ext)
             obs, info = env.reset()
 
             count = map_counters[name]

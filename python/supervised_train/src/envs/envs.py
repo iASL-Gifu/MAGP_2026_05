@@ -1,6 +1,8 @@
 from typing import Dict
 from omegaconf import DictConfig
 from f1tenth_gym.f110_env import F110Env
+import gymnasium as gym
+from gymnasium.wrappers import TimeLimit
 from .wrapper import F110Wrapper
 from f1tenth_gym.maps.map_manager import MapManager
 
@@ -15,5 +17,7 @@ def make_env(env_cfg: DictConfig, map_manager: MapManager,  param: Dict):
 
     ## 自作のラッパー
     env = F110Wrapper(env, map_manager=map_manager)
+
+    env = TimeLimit(env, max_episode_steps=10000)
 
     return env

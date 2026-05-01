@@ -1,16 +1,16 @@
 num_steps: 10000
-render: false
-render_mode: human_fast
+render: true
+render_mode: human  # human or huan_fast
 
-model_name: "TinyLidarNet" 
+model_name: "TinyLidarActionLstmNet" 
 
 # --- モデルパラメータ ---
 input_dim: 1080
 output_dim: 2
 sequence_length: 10
-ckpt_path: ???
+ckpt_path: ./ckpts/
 
-benchmark_dir: ./benchmarks/
+benchmark_dir: ./benchmarks/ppo
 
 
 envs:
@@ -21,9 +21,9 @@ envs:
   num_agents: 1
   steer_range: 0.4 ## ステアリングの範囲
   speed_range: 10.0 ## 車両の速度範囲
-  render_mode: human_fast ## human or human_fast
+  render_mode: human ## human or human_fast
   map:
-    name: IMS ## マップの名前
+    name: Austin ## マップの名前
     ext: .png ## マップの拡張子
     line_type: center ## center or race
     speed: 8.0 ## waypointの速度

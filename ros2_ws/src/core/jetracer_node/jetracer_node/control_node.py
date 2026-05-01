@@ -22,7 +22,7 @@ class JetRacerDriver(Node):
         self.declare_parameter('throttle_gain', 1.0)        # スロットルゲイン
         self.declare_parameter('steering_gain', 1.0)        # ステアリングゲイン
 
-        self.car = NvidiaRacecar(steering_channel=2, throttle_channel=1)
+        self.car = NvidiaRacecar()
         self.last_cmd_time = self.get_clock().now()
         self.car.throttle = 0.0
         self.car.steering = 0.0

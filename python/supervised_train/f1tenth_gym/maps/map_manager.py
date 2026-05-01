@@ -18,7 +18,7 @@ TRAIN_MAPS = [
 ]
 
 TEST_MAPS = [
-    'BrandsHatch', 'Catalunya', 'IMS', 'Monza', 'SaoPaulo', 'Zandvoort'
+    'Austin', 'BrandsHatch', 'Catalunya', 'IMS', 'Monza', 'SaoPaulo', 'Zandvoort'
 ]
 
 

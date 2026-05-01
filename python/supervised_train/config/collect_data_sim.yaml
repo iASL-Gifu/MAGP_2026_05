@@ -1,5 +1,5 @@
 output_dir: ./datasets/sim/
-num_sets: 2 ## train 15 map,  test 6maps
+num_sets: 15 ## train 15 map,  test 6maps
 num_steps: 10000
 render: false
 render_mode: human_fast

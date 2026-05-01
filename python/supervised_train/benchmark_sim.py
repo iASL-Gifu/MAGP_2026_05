@@ -75,7 +75,7 @@ def main(cfg: DictConfig):
 
         env.update_map(map_name, map_ext=cfg.envs.map.ext)
 
-        hidden_state = None
+        prev_hidden_state = None
         ## 0で初期化
         prev_action =  torch.zeros((1, 2), device=device) if is_use_prev_action else None
 
@@ -83,11 +83,15 @@ def main(cfg: DictConfig):
         # --- 評価ループ ---
         obs, info = env.reset()
         done = False
+        print(obs)
+        print(info)
 
         # 初期スキャンの登録
         scan = obs['scans'][0]
 
         while not done:
+            print(obs)
+            print(info)
             # 行動選択（エージェントとプランナ）
             actions = []
             with torch.no_grad():
