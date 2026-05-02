@@ -1,13 +1,15 @@
 # config/ppo_config.yaml
 model_name: "TinyLidarActionLstmPPO"
-total_timesteps: 1000000
+total_timesteps: 1e7
 steps_per_map: 100000
-learning_rate: 0.0001
-ent_coef: 0.01
-batch_size: 64
-gamma: 0.99
-gae_lambda: 0.95
+learning_rate: 0.00015
+
 n_steps: 2048
+ent_coef: 0.01
+batch_size: 128
+gamma: 0.993
+gae_lambda: 0.95
+
 model_path: "./ckpts/.zip"
 
 # 追加：評価・保存に関する設定
@@ -34,7 +36,7 @@ envs:
     ## planner用の設定
     use_dynamic_speed: true ## 動的な速度を使用するかどうか
     a_lat_max: 1.0 ## 最大横加速度
-    smooth_sigma: 3 ## スムージングのsigma
+    smooth_sigma: 3 ## スムージングのsigmaa
 
 vehicle:
   mu: 1.0489

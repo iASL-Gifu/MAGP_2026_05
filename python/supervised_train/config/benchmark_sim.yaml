@@ -1,5 +1,5 @@
 num_steps: 10000
-render: true
+render: True
 render_mode: human  # human or huan_fast
 
 model_name: "TinyLidarActionLstmNet" 
@@ -23,7 +23,7 @@ envs:
   speed_range: 10.0 ## 車両の速度範囲
   render_mode: human ## human or human_fast
   map:
-    name: Austin ## マップの名前
+    name: IMS   ## マップの名前
     ext: .png ## マップの拡張子
     line_type: center ## center or race
     speed: 8.0 ## waypointの速度

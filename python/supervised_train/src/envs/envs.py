@@ -3,7 +3,8 @@ from omegaconf import DictConfig
 from f1tenth_gym.f110_env import F110Env
 import gymnasium as gym
 from gymnasium.wrappers import TimeLimit
-from .wrapper import F110Wrapper
+from gymnasium.wrappers import RescaleAction
+from .wrapper import F110Wrapper, PPOWrapper
 from f1tenth_gym.maps.map_manager import MapManager
 
 def make_env(env_cfg: DictConfig, map_manager: MapManager,  param: Dict):
@@ -18,6 +19,36 @@ def make_env(env_cfg: DictConfig, map_manager: MapManager,  param: Dict):
     ## 自作のラッパー
     env = F110Wrapper(env, map_manager=map_manager)
 
-    env = TimeLimit(env, max_episode_steps=10000)
+    return env
+
+def make_ppo_env(env_cfg, map_manager, param, training):
+    """
+    PPO学習専用の環境構築フロー。
+    F110Wrapper を使わず、新しく作った PPOWrapper を使用します。
+    """
+    # 1. 公式のベース環境
+    env = F110Env(
+        map=map_manager.map_path, 
+        map_ext=env_cfg.map.ext, 
+        num_beams=env_cfg.num_beams, 
+        num_agents=env_cfg.num_agents, 
+        params=param
+    )
+
+    # 自作ラッパー
+    env = PPOWrapper(env, map_manager=map_manager, training=training)
+
+    # ステップ制限
+    if training:
+        env = TimeLimit(env, max_episode_steps=10000)
+
+    # アクションの正規化 ([-1, 1])
+    env = RescaleAction(env, min_action=-1.0, max_action=1.0)
 
     return env
+
+def linear_schedule(initial_learning_rate: float):
+    def schedule(progress_remaining: float):
+        return initial_learning_rate * progress_remaining
+
+    return schedule

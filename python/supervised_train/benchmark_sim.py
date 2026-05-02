@@ -19,7 +19,7 @@ def main(cfg: DictConfig):
 
     # --- 環境／プランナ／エージェント等の初期化 ---
     map_manager = MapManager(
-        map_name=cfg.envs.map.name,
+        map_name=MAP_DICT[0],
         map_ext=cfg.envs.map.ext,
         speed=cfg.envs.map.speed,
         downsample=cfg.envs.map.downsample,
@@ -83,15 +83,11 @@ def main(cfg: DictConfig):
         # --- 評価ループ ---
         obs, info = env.reset()
         done = False
-        print(obs)
-        print(info)
 
         # 初期スキャンの登録
         scan = obs['scans'][0]
 
         while not done:
-            print(obs)
-            print(info)
             # 行動選択（エージェントとプランナ）
             actions = []
             with torch.no_grad():

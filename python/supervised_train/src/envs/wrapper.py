@@ -5,7 +5,6 @@ import math
 from pyglet.gl import GL_POINTS
 from pyglet.text import Label
 
-
 from f1tenth_gym.maps.map_manager import MapManager
 
 class F110Wrapper(gym.Wrapper):
@@ -181,6 +180,121 @@ class F110Wrapper(gym.Wrapper):
         self.speed_label.x = left
         self.speed_label.y = top - 30
 
+    def render_waypoints(self, renderer):
+        """
+        Waypoint を描画するコールバック。
+        古い頂点リストは毎回削除してから、新しいものを登録します。
+        """
+        # 1) Waypoints 未設定時は何もしない
+        if self.map_manager.waypoints is None:
+            return
+
+        # 2) 更新が必要な場合のみ再生成処理を実行
+        if self.needs_waypoint_refresh:
+            print(f"[DEBUG] Waypoints refreshing: clearing {len(self._waypoint_vlists)} old points.")
+            
+            # 古いものを削除
+            for vlist in self._waypoint_vlists:
+                vlist.delete()
+            self._waypoint_vlists.clear()
+
+            # 新しいウェイポイントを登録
+            points = np.vstack((
+                self.map_manager.waypoints[:, 0],
+                self.map_manager.waypoints[:, 1]
+            )).T
+            scaled = 50. * points
+
+            for i, (x, y) in enumerate(scaled):
+                color = [255, 0, 0] if i == 0 else [200, 200, 200]
+                v = renderer.batch.add(
+                    1, GL_POINTS, None,
+                    ('v3f/stream', [x, y, 0.]),
+                    ('c3B/stream', color)
+                )
+                self._waypoint_vlists.append(v)
+            
+            self.needs_waypoint_refresh = False
+    
+class PPOWrapper(gym.Wrapper):
+    """
+    強化学習 (Stable Baselines3) 専用の独立したラッパークラス。
+    F110Wrapper を継承せず、多層ラッパー構造（TimeLimit等）に強い設計。
+    """
+    def __init__(self, env, map_manager: MapManager, training=False):
+        # 親クラス (gym.Wrapper) を初期化。これにより self.env が設定されます。
+        super().__init__(env)
+        
+        # 【重要】芯 (F110Env) を特定して物理パラメータを安全に取得
+        # 間に TimeLimit 等が挟まっていても、unwrapped は一番奥まで貫通します
+        inner = self.unwrapped 
+        
+        self.ego_idx = inner.ego_idx
+        self.map_manager = map_manager
+        self.training = training
+
+        self._waypoint_vlists = []  # ← 追加：ウェイポイント用のVertexListを保持
+        self.needs_waypoint_refresh = True
+
+        self.prev_steering = 0.0
+        self.noise_std = 0.05
+        self.debug_count = 0
+        self.level = 1 
+        self.speed = 0.0
+
+        # --- 観測・アクション空間の定義 ---
+        self.observation_space = spaces.Dict({
+            "scans": spaces.Box(low=0.0, high=35.0, shape=(inner.num_beams,), dtype=np.float32),
+            "state": spaces.Box(low=-20.0, high=20.0, shape=(3,), dtype=np.float32)
+        })
+        
+        self.action_space = spaces.Box(
+            low=np.array([inner.params['s_min'], inner.params['v_min']], dtype=np.float32), 
+            high=np.array([inner.params['s_max'], 10.0], dtype=np.float32), 
+            dtype=np.float32
+        )
+
+        # レンダリングコールバックの登録（これも芯に対して行う）
+        inner.add_render_callback(self.render_callback)
+        inner.add_render_callback(self.render_waypoints)
+
+    def render(self, mode="human"):
+        """
+        環境のレンダリングを簡単に呼び出せるようにする。
+        """
+        return self.env.render(mode=mode)
+
+    def render_callback(self, env_renderer):
+                # custom extra drawing function for camera update
+        e = env_renderer
+
+        # update camera to follow car
+        x = e.cars[0].vertices[::2]
+        y = e.cars[0].vertices[1::2]
+        top, bottom, left, right = max(y), min(y), min(x), max(x)
+
+        l = 800
+        e.left = left - l
+        e.right = right + l
+        e.top = top + l
+        e.bottom = bottom - l
+
+        # 初回のみ Label を生成する
+        if not hasattr(self, 'speed_label'):
+            self.speed_label = Label('Speed: 0.00 m/s',
+                                    font_name='Times New Roman',
+                                    font_size=14,
+                                    x=left, y=top - 30,
+                                    anchor_x='left', anchor_y='top',
+                                    color=(255, 255, 255, 255),
+                                    batch=e.batch)
+
+        # テキストの内容だけ更新する
+        self.speed_label.text = f'Speed: {self.speed:.2f} m/s'
+
+        # 座標も更新する（カメラが動く場合）
+        self.speed_label.x = left
+        self.speed_label.y = top - 30
 
     def render_waypoints(self, renderer):
         """
@@ -217,38 +331,15 @@ class F110Wrapper(gym.Wrapper):
                 self._waypoint_vlists.append(v)
             
             self.needs_waypoint_refresh = False
-            
 
+    def get_lap_time(self):
+        """
+        Ego車両の現在のラップタイムを取得する。
 
-class PPOWrapper(F110Wrapper):
-    """
-    強化学習 (Stable Baselines3) のために Gymnasium 仕様に準拠させたラッパー。
-    """
-    def __init__(self, env, map_manager, training=True):
-        self.raw_env = env
-        while hasattr(self.raw_env, 'env'):
-            self.raw_env = self.raw_env.env
-        super().__init__(self.raw_env, map_manager)
-        self.training = training
-
-        self.prev_steering = 0.0
-        self.noise_std = 0.05  # 学習時のノイズ
-        self.debug_count = 0
-        self.max_waypoint_idx = 0
-        self.level = 1  # カリキュラムレベル
-        
-        # PPOが観測データとアクションの範囲を理解するために必須の定義
-        # LiDARスキャンは 1080次元、距離は 0.0〜30.0m
-        self.observation_space = spaces.Dict({
-            "scans": spaces.Box(low=0.0, high=35.0, shape=(1080,), dtype=np.float32),
-            "state": spaces.Box(low=-20.0, high=20.0, shape=(3,), dtype=np.float32) # vs, vd, steering
-        })
-        # アクションは ステアリング(-0.4~0.4) と 速度(0.0~10.0) の2次元
-        self.action_space = gym.spaces.Box(
-            low=np.array([-0.4, 0.0], dtype=np.float32), 
-            high=np.array([0.4, 10.0], dtype=np.float32), 
-            dtype=np.float32
-        )
+        返り値:
+        - float: 現在のラップタイム
+        """
+        return self.unwrapped.lap_times[self.ego_idx]
 
     def _get_frenet_state(self, current_pos: np.ndarray, velocity: float, theta: float, waypoints: np.ndarray):
         """
@@ -265,7 +356,6 @@ class PPOWrapper(F110Wrapper):
             vs (float): コース接線方向の速度 (コースに沿った速さ)
             vd (float): コース法線方向の速度 (コースアウトする速さ)
         """
-
         if waypoints is None or len(waypoints) == 0:
             return 0.0, 0.0, 0.0, 0.0
         
@@ -297,185 +387,147 @@ class PPOWrapper(F110Wrapper):
         
         return d, vs, vd, idx
 
-    def set_training_mode(self, mode: bool):
-        """学習・評価の切り替え用メソッド"""
-        self.training = mode
-
     def compute_reward(self, d, vs, vd, idx, obs, info, action):
-        """ステージに応じた報酬計算の分岐"""
-        # 共通の衝突判定
+        '''共通部分'''
+        reward = 0.0
         terminated = False
+
+        # 衝突ペナルティ
         if np.any(info.get('collision', 0) > 0):
             return -1000.0, True
         
-
-
-        if self.level == 1:
-            return self._reward_level_1(d, vs, vd, idx, action), terminated
-        else:
-            return self._reward_level_2(d, vs, vd, idx, action), terminated
-
-    def _reward_level_1(self, d, vs, vd, idx, action):
-        """Level 1: 完走重視 (速度報酬を抑え、生存とコース維持を優先)"""
-        reward = 0.1  # 高めの生存報酬
-        reward += 0.8 * min(vs, 5.0) # 速度報酬は控えめ
-        reward -= 0.01 * abs(vd)
-        reward -= 0.03 * abs(d) # センター維持は適度
-        return reward
-
-    def _reward_level_2(self, d, vs, vd, idx, action):
-        """Level 2: 高速化 (速度報酬を強化、ライン取りを厳格化)"""
-        reward = 0.01 # 生存報酬を削る
-        reward += 0.05 * vs
-        reward -= 0.05 * abs(d) # ライン外れを厳しく罰する
-
-        # スピンへの警告
-        if abs(vd) > abs(vs):
-            reward -= 1.0
-
-        return reward
-
-    def step(self, action):
-        # 1. PPOから来る action は shape=(2,) です。
-        # シミュレータが期待する shape=(1, 2) に変換します。
-        if action.ndim == 1:
-            action = action.reshape(1, -1)
-
-        # 2. 親クラスの step を実行して辞書形式の obs を取得
-        obs, reward, terminated, truncated, info = super().step(action)
-
-        '''
-        # 2. 学習時のみノイズを付与
-        if self.training:
-            # list の可能性を考慮して numpy 配列に変換
-            scans = np.array(obs['scans'])
-            
-            # ノイズを適用
-            noise = np.random.normal(0, self.noise_std, scans.shape)
-            scans = np.clip(scans + noise, 0.0, 35.0)
-            
-            # ドロップアウト処理
-            if np.random.rand() < 0.01:
-                mask = np.random.rand(*scans.shape) < 0.05
-                scans[mask] = 35.0
-            
-            # 辞書に戻す
-            obs['scans'] = scans
-        '''
-
-        # 必要な情報を obs から info に移す
-        info['collision'] = obs.get('collisions')
-        info['lap_times'] = obs.get('lap_times')
-        info['lap_counts'] = obs.get('lap_counts')
-
-        current_pos = info.get('current_pos')
-        theta = obs['poses_theta'][0]
-        velocity = info.get('velocity')
-        waypoints = info.get('waypoint')
-        d, vs, vd, idx = self._get_frenet_state(current_pos, velocity, theta, waypoints)
-
-        reward, terminated = self.compute_reward(d, vs, vd, idx, obs, info, action)
-
-        '''
-        # 1. 区間進捗報酬 (Progress Reward)
-        # 過去の最高地点を超えた場合のみ、進んだWP数に応じてボーナス
-        if idx > self.max_waypoint_idx:
-            steps_forward = idx - self.max_waypoint_idx
-            # 周回遅れ判定（リセット直後などの大きなジャンプを抑制）
-            if steps_forward < 100: 
-                reward += 2.0 * steps_forward
-            self.max_waypoint_idx = idx
+        # 停止ペナルティ
+        if abs(obs["linear_vels_x"][0]) <= 0.25:
+            reward -= 2.0
         
-        # コースが一周してインデックスが 0 に戻る場合の処理
-        if idx < self.max_waypoint_idx - 200:
-            self.max_waypoint_idx = 0
-        '''
-        
-        # 4. 滑らかさ (w: 角速度)
+        # 角速度ペナルティ
         w = obs['ang_vels_z'][0]
         reward -= 0.05 * abs(w)
-
         
+        '''
         # 急な舵角変更の抑制           
         current_steering = action[0][0]
         # steering_diff = abs(current_steering - self.prev_steering)
         # reward -= 1.0 * steering_diff # 急な舵角変更を厳しく制限
         self.prev_steering = current_steering
+        '''
 
-        # 5. 壁への接近回避 (scans)
+        # 5. 壁への接近ペナルティ
         scans = obs['scans'][0]
         min_distance = np.min(scans)
         distance_threshold = 0.5
         if min_distance < distance_threshold:
             reward -= 0.01 * (distance_threshold - min_distance)
-
-
-        # --- 強制 TimeLimit ロジック ---
-        if self.debug_count >= 10000:
-            truncated = True
-        # -----------------------------
-
         
+        if self.level == 1:
+            return self._reward_level_1(d, vs, vd, reward), terminated
+        else:
+            return self._reward_level_2(d, vs, vd, reward), terminated
+
+    def _reward_level_1(self, d, vs, vd, reward):
+        """Level 1: 完走重視 (速度報酬を抑え、生存とコース維持を優先)"""
+        reward += 0.3  # 高めの生存報酬
+        reward += 0.8 * min(vs, 5.0) # 速度報酬は控えめ
+        reward -= 0.1 * abs(vd)
+        reward -= 0.05 * abs(d) # センター維持は適度
+        return reward
+
+    def _reward_level_2(self, d, vs, vd, reward):
+        """Level 2: 高速化 (速度報酬を強化、ライン取りを厳格化)"""
+        reward += 0.01 # 生存報酬を削る
+        reward += 1.0 * vs
+        reward -= 0.01 * abs(vd)
+        reward -= 0.05 * abs(d) # ライン外れを厳しく罰する
+
+        # スピンへの警告
+        #if abs(vd) > abs(vs):
+        #    reward -= 1.0
+
+        return reward
+
+    def set_training_mode(self, mode: bool):
+        """学習・評価の切り替え用メソッド"""
+        self.training = mode
+
+    def update_map(self, map_name, map_ext):
+        self.map_manager.update_map(map_name)
+        map_path = self.map_manager.map_yaml_path
+        max_ext = self.map_manager.map_ext
+
+        self.needs_waypoint_refresh = True
+        self.env.update_map(map_path, max_ext)
+
+    def step(self, action):
+        # 1. PPOから来る action の形状調整
+        if action.ndim == 1:
+            action = action.reshape(1, -1)
+
+        # 2. 直下の環境 (self.env) の step を実行
+        # ここで TimeLimit があれば truncated=True が正しく返ってきます
+        obs, reward, terminated, truncated, info = self.env.step(action)
+
+        # 3. waypoint作成と情報の抽出 (F110Wrapper の step 内にあった処理)
+        current_pos = np.array([obs['poses_x'][0], obs['poses_y'][0]])
+        waypoint = self.map_manager.get_future_waypoints(current_pos, num_points=10)
+        
+        info.update({
+            'waypoint': waypoint,
+            'current_pos': current_pos,
+            'collision': obs.get('collisions'),
+            'lap_times': obs.get('lap_times'),
+            'lap_counts': obs.get('lap_counts')
+        })
+        
+        vel_x, vel_y = obs['linear_vels_x'][0], obs['linear_vels_y'][0]
+        self.speed = np.sqrt(vel_x**2 + vel_y**2)
+        info['velocity'] = self.speed
+
+        # 4. 終了判定 (F110Wrapper のロジック)
+        if abs(obs['poses_theta'][0]) > 100.0: truncated = True
+        if obs['lap_counts'][0] == 1: terminated = True
+
+        # 5. 報酬計算
+        d, vs, vd, idx = self._get_frenet_state(current_pos, self.speed, obs['poses_theta'][0], waypoint)
+        reward, terminated = self.compute_reward(d, vs, vd, idx, obs, info, action)
+
+        # 6. 観測データの整形
+        obs_dict = {
+            "scans": obs['scans'][0].astype(np.float32),
+            "state": np.array([vs, vd, action[0][0]], dtype=np.float32)
+        }
+
         # --- ログ表示 ---
         self.debug_count += 1
         if self.debug_count % 100 == 0:
             if self.training:
-                # 表示用にレベルに応じた報酬内訳を再計算
-                if self.level == 1:
-                    r_speed = 0.5 * min(vs, 5.0)
-                    r_dist  = -0.1 * abs(d)
-                    mode_str = "LV1 (Stable)"
-                else:
-                    r_speed = 1.0 * vs
-                    r_dist  = -0.5 * abs(d)
-                    mode_str = "LV2 (HighSpeed)"
 
-                print(f"\n--- [DEBUG] Step: {self.debug_count} | Mode: {mode_str} ---")
-                print(f"  Inputs  | vs: {vs:6.2f}, vd: {vd:6.2f}, d: {d:6.2f}, vel: {velocity:5.2f}, WP_idx: {idx}")
-                print(f"  Rewards | Total: {reward:6.2f}")
-                print(f"    (Detail) Speed: {r_speed:5.2f}, Dist_Pen: {r_dist:5.2f}, WP_max: {self.max_waypoint_idx}")
+                print(f"\r--- [TRAIN] Step: {self.debug_count:5} | vs: {vs:5.2f} | Rew: {reward:6.2f} ---", end="")
                 
                 if reward < -10:
                     print(f"  !!! WARNING: Negative Reward Spike ({reward:.2f}) !!!")
             else:
                 print(f"\r[EVAL] Steps: {self.debug_count}/10000 | Speed: {vs:.2f}", end="")
-        
-
-        # 強化学習用に obs を配列に変換
-        lidar_obs = obs['scans'][0].astype(np.float32)
-        obs_dict = {
-            "scans": lidar_obs, # 既存の1080次元LiDAR
-            "state": np.array([vs, vd, self.prev_steering], dtype=np.float32)
-        }
-
 
         return obs_dict, float(reward), terminated, truncated, info
 
     def reset(self, **kwargs):
-        # 1. 親クラスの reset を実行
-        obs, info = super().reset(**kwargs)
-
+        # 直下の環境の reset を実行
+        obs, info = self.env.reset(**kwargs)
+        
         self.prev_steering = 0.0
-        self.max_waypoint_idx =0
         self.debug_count = 0
 
-        lidar_obs = np.array(obs['scans'][0], dtype=np.float32)
-
-        info['collision'] = obs.get('collisions')
-        info['lap_times'] = obs.get('lap_times')
-        info['lap_counts'] = obs.get('lap_counts')
-
-        current_pos = info.get('current_pos')
-        theta = obs['poses_theta'][0]
-        velocity = info.get('velocity')
-        waypoints = info.get('waypoint')
-
-        d, vs, vd, idx = self._get_frenet_state(current_pos, velocity, theta, waypoints)
+        # 初期状態の情報を取得
+        current_pos = np.array([obs['poses_x'][0], obs['poses_y'][0]])
+        waypoint = self.map_manager.get_future_waypoints(current_pos, num_points=10)
+        d, vs, vd, idx = self._get_frenet_state(current_pos, 0.0, obs['poses_theta'][0], waypoint)
 
         obs_dict = {
-            "scans": lidar_obs, # 既存の1080次元LiDAR
-            "state": np.array([vs, vd, self.prev_steering], dtype=np.float32)
+            "scans": obs['scans'][0].astype(np.float32),
+            "state": np.array([vs, vd, 0.0], dtype=np.float32)
         }
-        
-        # 2. LiDAR配列を返却
         return obs_dict, info
+
+    def close(self):
+        """リソース解放"""
+        self.env.close()

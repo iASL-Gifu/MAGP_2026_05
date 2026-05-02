@@ -3,8 +3,7 @@ import csv
 import numpy as np
 import hydra
 from omegaconf import DictConfig, OmegaConf
-from src.envs.envs import make_env
-from src.envs.wrapper import PPOWrapper
+from src.envs.envs import make_ppo_env
 from f1tenth_gym.maps.map_manager import MapManager
 from f1tenth_gym.maps.map_manager import TEST_MAPS as MAP_DICT
 from stable_baselines3 import PPO
@@ -16,12 +15,11 @@ def main(cfg: DictConfig):
     print('-----------------------------------------')
 
     map_manager = MapManager(
-        map_name=cfg.envs.map.name,
+        map_name=MAP_DICT[0],
         map_ext=cfg.envs.map.ext,
         line_type=cfg.envs.map.line_type
     )
-    base_env = make_env(cfg.envs, map_manager, cfg.vehicle)
-    env = PPOWrapper(base_env, map_manager, training=False)
+    env = make_ppo_env(cfg.envs, map_manager, cfg.vehicle, False)
     
     # --- PPOモデルの読み込み ---
     model = PPO.load(cfg.ckpt_path)
@@ -42,7 +40,15 @@ def main(cfg: DictConfig):
         with open(csv_file, mode='w', newline='') as file:
             csv.writer(file).writerow(["x", "y", "velocity"])
 
-        env.update_map(map_name, cfg.envs.map.ext)
+        curr = env
+        while curr is not None:
+            # 現在の層が update_map を持っているか確認
+            if hasattr(curr, 'update_map'):
+                curr.update_map(map_name, cfg.envs.map.ext)
+                break
+
+            # 次の層（内側の env）へ進む
+            curr = getattr(curr, 'env', None)
 
         obs, info = env.reset()
         done = False
@@ -85,7 +91,7 @@ def main(cfg: DictConfig):
                 break
 
             if cfg.render:
-                env.render(cfg.render_mode)
+                env.unwrapped.render(cfg.render_mode)
 
             obs = next_obs
     env.close()
