@@ -52,3 +52,24 @@ def linear_schedule(initial_learning_rate: float):
         return initial_learning_rate * progress_remaining
 
     return schedule
+
+def find_and_update_map(env, map_name, map_ext):
+    """
+    環境の階層を外側から内側へ探索し、
+    update_map メソッドを最初に持っているラッパー（PPOWrapper等）のメソッドを実行する。
+    """
+    curr = env
+    while curr is not None:
+        # 現在の層が update_map を持っているか確認
+        # ただし、TimeLimit や RescaleAction は持っていないので自動的にスキップされます
+        if hasattr(curr, 'update_map'):
+            print(f"  -> Found update_map in {type(curr).__name__}")
+            curr.update_map(map_name, map_ext)
+            return True
+        
+        # 次の層（内側の env）へ進む
+        curr = getattr(curr, 'env', None)
+    
+    print("  -> Warning: update_map not found in any wrapper. Falling back to unwrapped.")
+    env.unwrapped.update_map(map_name, map_ext)
+    return False

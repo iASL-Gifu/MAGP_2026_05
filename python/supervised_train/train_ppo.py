@@ -2,7 +2,8 @@ import gymnasium as gym
 from stable_baselines3 import PPO
 from stable_baselines3.common.env_checker import check_env
 from stable_baselines3.common.callbacks import EvalCallback
-from src.envs.envs import make_ppo_env, linear_schedule
+from src.envs.envs import make_ppo_env, linear_schedule, find_and_update_map
+from src.envs.curriculum import CurriculumMapManager
 from f1tenth_gym.maps.map_manager import MapManager
 import hydra
 from omegaconf import DictConfig, OmegaConf
@@ -12,13 +13,17 @@ import os
 @hydra.main(config_path="config", config_name="train_ppo", version_base="1.2")
 def test_ppo_learning(cfg: DictConfig):
 
-    initial_learning_rate = 0.00015
+    initial_learning_rate = cfg.learning_rate
     lr_schedule = linear_schedule(initial_learning_rate)
-    target_map = "Austin"
+
+    curriculum = CurriculumMapManager()
+    total_timesteps = cfg.total_timesteps
+    steps_per_round = cfg.steps_per_round
+    total_rounds =    int(total_timesteps / steps_per_round)
     
     # --- 環境の構築 ---
     map_manager = MapManager(
-            target_map,
+            map_name=cfg.envs.map.name,
             map_ext=cfg.envs.map.ext,
             line_type=cfg.envs.map.line_type
         )
@@ -27,7 +32,7 @@ def test_ppo_learning(cfg: DictConfig):
     env = make_ppo_env(cfg.envs, map_manager, cfg.vehicle, True)
     
     # 評価用（完全に別のインスタンスを作る）
-    eval_env = make_ppo_env(cfg.envs, map_manager, cfg.vehicle, False)
+    eval_env = make_ppo_env(cfg.envs, map_manager, cfg.vehicle, True)
     
 
     # 評価用コールバックの更新
@@ -73,21 +78,24 @@ def test_ppo_learning(cfg: DictConfig):
     # --- 学習の試行 ---
     print("[*] 学習を開始します...")
 
-    '''
-    # --- STEP 1: Level 1 (低速・安定走行の学習) ---
-    env.level = 1
-
-    print("=== Training Level 1: Stability ===")
-    model.learn(total_timesteps=500000, callback=eval_callback)
-    '''
-
-    # --- STEP 2: Level 2 (高速化への移行) ---
-    print("=== Training Level 2: High Speed ===")
-    env.level = 2
-    # env.raw_env.params.v_max = 10.0 # 制限解除
-    
-    # 学習率を少し下げて、これまでの安定走行を壊さないように微調整
-    model.learn(total_timesteps=cfg.total_timesteps, callback=eval_callback, reset_num_timesteps=False)
+    current_total_steps = 0
+    for round in range(total_rounds):
+        # 1. 進捗に応じたマップの選択
+        target_map = curriculum.get_map_by_progress(current_total_steps, cfg.total_timesteps)
+        print(f"Round {round}: Training on {target_map}")
+        
+        # 2. 環境のマップ更新（貫通型メソッドを使用）
+        find_and_update_map(env, target_map, cfg.envs.map.ext)
+        find_and_update_map(eval_env, target_map, cfg.envs.map.ext)
+        
+        # 3. 学習の継続
+        model.learn(
+            total_timesteps=steps_per_round, 
+            callback=eval_callback, 
+            reset_num_timesteps=False # 累計ステップ数を維持
+        )
+        
+        current_total_steps += steps_per_round
     
     os.makedirs(cfg.save_path, exist_ok=True)
     save_path = os.path.join(cfg.save_path, "final_model")

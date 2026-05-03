@@ -239,7 +239,6 @@ class PPOWrapper(gym.Wrapper):
         self.prev_steering = 0.0
         self.noise_std = 0.05
         self.debug_count = 0
-        self.level = 1 
         self.speed = 0.0
 
         # --- 観測・アクション空間の定義 ---
@@ -388,13 +387,18 @@ class PPOWrapper(gym.Wrapper):
         return d, vs, vd, idx
 
     def compute_reward(self, d, vs, vd, idx, obs, info, action):
-        '''共通部分'''
-        reward = 0.0
+        reward = 0.01
         terminated = False
 
         # 衝突ペナルティ
         if np.any(info.get('collision', 0) > 0):
             return -1000.0, True
+        
+        # 速度報酬
+        reward += 1.0 * vs
+        reward -= 0.01 * abs(vd)
+
+        reward -= 0.05 * abs(d)
         
         # 停止ペナルティ
         if abs(obs["linear_vels_x"][0]) <= 0.25:
@@ -403,14 +407,6 @@ class PPOWrapper(gym.Wrapper):
         # 角速度ペナルティ
         w = obs['ang_vels_z'][0]
         reward -= 0.05 * abs(w)
-        
-        '''
-        # 急な舵角変更の抑制           
-        current_steering = action[0][0]
-        # steering_diff = abs(current_steering - self.prev_steering)
-        # reward -= 1.0 * steering_diff # 急な舵角変更を厳しく制限
-        self.prev_steering = current_steering
-        '''
 
         # 5. 壁への接近ペナルティ
         scans = obs['scans'][0]
@@ -418,32 +414,8 @@ class PPOWrapper(gym.Wrapper):
         distance_threshold = 0.5
         if min_distance < distance_threshold:
             reward -= 0.01 * (distance_threshold - min_distance)
-        
-        if self.level == 1:
-            return self._reward_level_1(d, vs, vd, reward), terminated
-        else:
-            return self._reward_level_2(d, vs, vd, reward), terminated
 
-    def _reward_level_1(self, d, vs, vd, reward):
-        """Level 1: 完走重視 (速度報酬を抑え、生存とコース維持を優先)"""
-        reward += 0.3  # 高めの生存報酬
-        reward += 0.8 * min(vs, 5.0) # 速度報酬は控えめ
-        reward -= 0.1 * abs(vd)
-        reward -= 0.05 * abs(d) # センター維持は適度
-        return reward
-
-    def _reward_level_2(self, d, vs, vd, reward):
-        """Level 2: 高速化 (速度報酬を強化、ライン取りを厳格化)"""
-        reward += 0.01 # 生存報酬を削る
-        reward += 1.0 * vs
-        reward -= 0.01 * abs(vd)
-        reward -= 0.05 * abs(d) # ライン外れを厳しく罰する
-
-        # スピンへの警告
-        #if abs(vd) > abs(vs):
-        #    reward -= 1.0
-
-        return reward
+        return reward, terminated
 
     def set_training_mode(self, mode: bool):
         """学習・評価の切り替え用メソッド"""
@@ -510,9 +482,40 @@ class PPOWrapper(gym.Wrapper):
 
         return obs_dict, float(reward), terminated, truncated, info
 
-    def reset(self, **kwargs):
+    def reset(self, seed=None, options=None, index: int=0):
+        # --- 初期ポーズ(poses)の自動生成ロジック ---
+        if options is None or "poses" not in options:
+            positions = []
+            if self.map_manager.waypoints is not None:
+                num_waypoints = len(self.map_manager.waypoints)
+                num_agents = self.unwrapped.num_agents # 芯の環境からエージェント数を取得
+
+                # エージェントごとに開始地点を分散（単独ならindex番目から）
+                index_increment = num_waypoints / num_agents
+
+                for i in range(num_agents):
+                    waypoint_index = int(i * index_increment + index) % num_waypoints 
+                    next_waypoint_index = (waypoint_index + 1) % num_waypoints
+
+                    x, y = self.map_manager.waypoints[waypoint_index][:2]
+                    next_x, next_y = self.map_manager.waypoints[next_waypoint_index][:2]
+                
+                    # 進行方向から角度(yaw)を計算
+                    dx = next_x - x
+                    dy = next_y - y
+                    t = np.arctan2(dy, dx) # math.atan2 の代わりに np を使用
+
+                    positions.append([x, y, t])
+            else:
+                # ウェイポイントがない場合のフォールバック
+                positions = [[0, 0, 0] for _ in range(self.unwrapped.num_agents)]
+
+            # optionsを再構築
+            options = options or {}
+            options["poses"] = np.array(positions)
+
         # 直下の環境の reset を実行
-        obs, info = self.env.reset(**kwargs)
+        obs, info = self.env.reset(seed=seed, options=options)
         
         self.prev_steering = 0.0
         self.debug_count = 0

@@ -1,7 +1,7 @@
 # config/ppo_config.yaml
 model_name: "TinyLidarActionLstmPPO"
 total_timesteps: 1e7
-steps_per_map: 100000
+steps_per_round: 100000
 learning_rate: 0.00015
 
 n_steps: 2048
