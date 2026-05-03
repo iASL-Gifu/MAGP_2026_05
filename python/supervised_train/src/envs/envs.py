@@ -47,10 +47,14 @@ def make_ppo_env(env_cfg, map_manager, param, training):
 
     return env
 
-def linear_schedule(initial_learning_rate: float):
+def linear_schedule(start_lr: float, end_lr: float):
+    """
+    開始時の学習率と終了時の学習率を受け取り、その間を直線でつなぐ関数を返す。
+    """
     def schedule(progress_remaining: float):
-        return initial_learning_rate * progress_remaining
-
+        # progress_remaining: 1.0 (ラウンド開始) -> 0.0 (ラウンド終了)
+        # 線形補間: end + (start - end) * progress
+        return end_lr + (start_lr - end_lr) * progress_remaining
     return schedule
 
 def find_and_update_map(env, map_name, map_ext):

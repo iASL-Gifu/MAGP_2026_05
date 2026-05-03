@@ -2,7 +2,7 @@ import gymnasium as gym
 from stable_baselines3 import PPO
 from stable_baselines3.common.env_checker import check_env
 from stable_baselines3.common.callbacks import EvalCallback
-from src.envs.envs import make_ppo_env, linear_schedule, find_and_update_map
+from src.envs.envs import make_ppo_env, find_and_update_map, linear_schedule
 from src.envs.curriculum import CurriculumMapManager
 from f1tenth_gym.maps.map_manager import MapManager
 import hydra
@@ -14,7 +14,6 @@ import os
 def test_ppo_learning(cfg: DictConfig):
 
     initial_learning_rate = cfg.learning_rate
-    lr_schedule = linear_schedule(initial_learning_rate)
 
     curriculum = CurriculumMapManager()
     total_timesteps = cfg.total_timesteps
@@ -58,7 +57,7 @@ def test_ppo_learning(cfg: DictConfig):
             verbose=1,
             n_steps=cfg.n_steps,
             ent_coef=cfg.ent_coef,
-            learning_rate=lr_schedule,
+            learning_rate=initial_learning_rate,
             batch_size=cfg.batch_size,
             gamma=cfg.gamma,
             n_epochs=10,
@@ -80,13 +79,28 @@ def test_ppo_learning(cfg: DictConfig):
 
     current_total_steps = 0
     for round in range(total_rounds):
-        # 1. 進捗に応じたマップの選択
+        # 進捗に応じたマップの選択
         target_map = curriculum.get_map_by_progress(current_total_steps, cfg.total_timesteps)
         print(f"Round {round}: Training on {target_map}")
         
-        # 2. 環境のマップ更新（貫通型メソッドを使用）
+        # 環境のマップ更新（貫通型メソッドを使用）
         find_and_update_map(env, target_map, cfg.envs.map.ext)
         find_and_update_map(eval_env, target_map, cfg.envs.map.ext)
+
+        env.reset()
+        eval_env.reset()
+        model._last_obs = None
+
+        # 学習率の計算
+        # 1. 全体の進捗から、このラウンドの「開始時」と「終了時」の学習率を計算
+        start_progress = current_total_steps / total_timesteps
+        end_progress = (current_total_steps + steps_per_round) / total_timesteps
+        
+        # 例: 0.00015 から 0 まで直線的に落としたい場合
+        round_start_lr = initial_learning_rate * (1.0 - start_progress)
+        round_end_lr = initial_learning_rate * (1.0 - end_progress)
+        
+        model.lr_schedule = linear_schedule(round_start_lr, round_end_lr)
         
         # 3. 学習の継続
         model.learn(

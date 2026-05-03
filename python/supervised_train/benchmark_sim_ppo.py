@@ -5,7 +5,8 @@ import hydra
 from omegaconf import DictConfig, OmegaConf
 from src.envs.envs import make_ppo_env
 from f1tenth_gym.maps.map_manager import MapManager
-from f1tenth_gym.maps.map_manager import TEST_MAPS as MAP_DICT
+# from f1tenth_gym.maps.map_manager import TEST_MAPS as MAP_DICT
+from f1tenth_gym.maps.map_manager import TRAIN_MAPS as MAP_DICT
 from stable_baselines3 import PPO
 
 @hydra.main(config_path="config", config_name="benchmark_sim", version_base="1.2")

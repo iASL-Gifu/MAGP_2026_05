@@ -75,7 +75,7 @@ def main(cfg: DictConfig):
 
         env.update_map(map_name, map_ext=cfg.envs.map.ext)
 
-        hidden_state = None
+        prev_hidden_state = None
         ## 0で初期化
         prev_action =  torch.zeros((1, 2), device=device) if is_use_prev_action else None
 
