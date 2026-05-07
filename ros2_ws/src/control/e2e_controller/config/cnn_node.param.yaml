@@ -7,6 +7,6 @@
     model_name: TinyLidarNet
     model_path: .pt
     max_range: 30.0
-    input_dim: 1081
+    input_dim: 1080
     output_dim: 2
     sequence_length: 1
