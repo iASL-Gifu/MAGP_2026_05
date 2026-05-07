@@ -1,6 +1,6 @@
 num_steps: 10000
-render: True
-render_mode: human  # human or huan_fast
+render: false
+render_mode: human_fast  # human or huan_fast
 
 model_name: "TinyLidarNet" 
 

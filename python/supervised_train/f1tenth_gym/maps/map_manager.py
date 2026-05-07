@@ -45,9 +45,6 @@ class MapManager:
         self.a_lat_max        = a_lat_max
         self.smooth_sigma     = smooth_sigma
 
-        # 曲率が使いたかった
-        self.curvatures = None
-
         # 初回ロード
         self._set_map_name(map_name)
         self._load_map_data()
@@ -64,13 +61,14 @@ class MapManager:
 
     def _compute_speeds(self, wpts: np.ndarray) -> np.ndarray:
         N = len(wpts)
-        k = 16  ## 1
+        if not self.use_dynamic_speed:
+            return np.full((N,1), self.speed, dtype=np.float32)
 
         # 曲率計算
         curvature = np.zeros(N, dtype=np.float32)
-        for i in range(k, N-k):
-            v1 = wpts[i]   - wpts[i-k]
-            v2 = wpts[i+k] - wpts[i]
+        for i in range(1, N-1):
+            v1 = wpts[i]   - wpts[i-1]
+            v2 = wpts[i+1] - wpts[i]
             n1, n2 = np.linalg.norm(v1), np.linalg.norm(v2)
             if n1 < 1e-6 or n2 < 1e-6:
                 continue
@@ -79,15 +77,9 @@ class MapManager:
             curvature[i] = theta / n2
 
         # 曲率スムージング
-        self.curvatures = gaussian_filter1d(curvature, sigma=self.smooth_sigma)
-        print(f"Max: {curvature.max()}, Index: {curvature.argmax()}, Size: {curvature.size}")
-        print(f"0.1超の個数: {(curvature > 0.1).sum()} / 全体: {curvature.size}")
-
-        if not self.use_dynamic_speed:
-            return np.full((N,1), self.speed, dtype=np.float32)
+        curvature_smooth = gaussian_filter1d(curvature, sigma=self.smooth_sigma)
 
         # カーブクラス分け
-        curvature_smooth = self.curvatures
         bins = [0.01, 0.02, 0.2]
         curve_classes = np.digitize(curvature_smooth, bins=bins)
         self.curve_classes = curve_classes
@@ -182,7 +174,7 @@ class MapManager:
     def get_future_waypoints(self, current_point, num_points=10):
         idx, _ = self.get_trackline_segment(current_point)
         future_indices = [(idx + i) % len(self.waypoints) for i in range(num_points)]
-        return self.waypoints[future_indices], idx
+        return self.waypoints[future_indices]
 
     def calc_progress(self, point):
         idx, dists = self.get_trackline_segment(point)
