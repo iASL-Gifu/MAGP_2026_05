@@ -24,6 +24,6 @@ install(DIRECTORY
   launch
   config
   DESTINATION share/${PROJECT_NAME})  
-
+  PATTERN ".DS_Store" EXCLUDE
 ament_package()
 

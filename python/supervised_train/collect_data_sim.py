@@ -139,6 +139,17 @@ def main(cfg: DictConfig):
                 # np.save(os.path.join(run_output_dir, "waypoints.npy"), np.array(waypoints))
                 # np.save(os.path.join(run_output_dir, "prev_actions.npy"), np.array(prev_actions))
                 
+                # ===== CSV保存 =====
+                csv_path = os.path.join(run_output_dir, "dataset.csv")
+
+                with open(csv_path, "w") as f:
+                    for i in range(len(scans)):
+                        row = list(scans[i]) + [all_steers[i], all_speeds_normalized[i]]
+                        f.write(",".join(map(str, row)) + "\n")
+
+                print(f"CSV saved: {csv_path}")
+                
+                
                 print(f"Data for Map: {name}, Run: {count + 1} saved to: {run_output_dir}")
             else:
                 print(f"Data for Map: {name}, Run: {count + 1} not saved due to early termination or truncation.")

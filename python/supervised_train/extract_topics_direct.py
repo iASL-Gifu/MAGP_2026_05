@@ -1,10 +1,7 @@
 from pathlib import Path
 import numpy as np
 from rosbags.highlevel import AnyReader
-from rosbags.highlevel import AnyReader
-from rosbags.typesys import Stores, get_typestore
-
-typestore = get_typestore(Stores.ROS2_HUMBLE) 
+from rosbags.typesys import get_typestore, Stores
 
 
 def extract_and_save_per_bag(bag_path, output_dir, scan_topic, cmd_topic):
@@ -13,53 +10,41 @@ def extract_and_save_per_bag(bag_path, output_dir, scan_topic, cmd_topic):
     out_dir = Path(output_dir) / bag_name
     out_dir.mkdir(parents=True, exist_ok=True)
 
+    MAX_SPEED = 3.0 
+
     scan_data, scan_times = [], []
     cmd_data, cmd_times = [], []
-
-    print("BAG PATH:", bag_path)
+    
+    typestore = get_typestore(Stores.ROS2_HUMBLE)
 
     with AnyReader([bag_path], default_typestore=typestore) as reader:
-        print([c.topic for c in reader.connections])
         connections = [c for c in reader.connections if c.topic in [scan_topic, cmd_topic]]
         for conn, timestamp, raw in reader.messages(connections=connections):
             msg = reader.deserialize(raw, conn.msgtype)
 
-            # ===== scan =====
-            if conn.topic == scan_topic:
-                try:
-                    scan = np.array(msg.ranges, dtype=np.float32)
-                    scan_data.append(scan)
-                    scan_times.append(timestamp)
-                except:
-                    continue
+            TARGET_DIM = 1080
+            
+            if conn.topic == scan_topic and conn.msgtype == 'sensor_msgs/msg/LaserScan':
+                scan = np.array(msg.ranges, dtype=np.float32)
 
-            # ===== cmd =====
-            elif conn.topic == cmd_topic:
-                    try:
-                        # ===== Ackermann =====
-                        if hasattr(msg, "drive"):
-                            steer = msg.drive.steering_angle
-                            speed = msg.drive.speed
+                # --- 長さを統一 ---
+                if len(scan) > TARGET_DIM:
+                    scan = scan[:TARGET_DIM]
+                elif len(scan) < TARGET_DIM:
+                    scan = np.pad(scan, (0, TARGET_DIM - len(scan)), constant_values=0.0)
 
-                        elif hasattr(msg, "steering_angle"):
-                            steer = msg.steering_angle
-                            speed = msg.speed
+                scan_data.append(scan)
+                scan_times.append(timestamp)
 
-                        # ===== Twist=====
-                        elif hasattr(msg, "linear") and hasattr(msg, "angular"):
-                            speed = msg.linear.x
-                            steer = msg.angular.z   
-
-                        else:
-                            continue
-
-                        cmd_data.append(np.array([steer, speed], dtype=np.float32))
-                        cmd_times.append(timestamp)
-
-                    except Exception as e:
-                        print("CMD ERROR:", e)
-                        continue
-
+            elif conn.topic == cmd_topic and conn.msgtype == 'geometry_msgs/msg/Twist':
+                steering = msg.angular.z
+                speed = msg.linear.x
+                
+                speed = msg.linear.x / MAX_SPEED
+                speed = np.clip(speed, 0.0, 1.0)
+                
+                cmd_data.append(np.array([steering, speed], dtype=np.float32))
+                cmd_times.append(timestamp)  # ← これが無いのが原因
 
     if len(scan_data) == 0 or len(cmd_data) == 0:
         print(f'[WARN] Skipping {bag_name}: insufficient data')

@@ -33,13 +33,13 @@ public:
     // [変更] ボタン割り当て
     declare_parameter<int>("joy_enable_button", 4);    // 手動操縦有効化 (L1)
     declare_parameter<int>("steer_gain_button", 5);    // ステア高ゲイン (R1)
-    declare_parameter<int>("autonomy_button",   3);    // 自動操縦モード (Yボタンなど)
+    declare_parameter<int>("autonomy_button",   0);    // 自動操縦モード (Yボタンなど)
     declare_parameter<int>("start_button",      9);
     declare_parameter<int>("stop_button",       8);
 
     // [変更] 軸の割り当て
     declare_parameter<int>("speed_axis", 1); // 左スティック上下
-    declare_parameter<int>("steer_axis", 2); // 右スティック左右
+    declare_parameter<int>("steer_axis", 3); // 右スティック左右
 
     // [変更] スケール関連
     declare_parameter<double>("speed_scale", 1.0);

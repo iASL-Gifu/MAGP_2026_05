@@ -36,21 +36,11 @@ def extract_and_save_per_bag(bag_path, output_dir, scan_topic, cmd_topic):
     synced_scans, synced_steers, synced_speeds = [], [], []
     for i, stime in enumerate(scan_times):
         idx = np.argmin(np.abs(cmd_times - stime))
-        
-        s = np.nan_to_num(scan_data[i], posinf=10.0, neginf=0.0)
-        s = s / 10.0
-
-        synced_scans.append(s)
+        synced_scans.append(scan_data[i])
         synced_steers.append(cmd_data[idx][0])
         synced_speeds.append(cmd_data[idx][1])
-        
-    final_X = np.array(synced_scans, dtype=np.float32)[:, np.newaxis, :]
-    final_y = np.array(synced_steers, dtype=np.float32)
 
     # 保存
-    np.save(out_dir / 'X.npy', final_X)
-    np.save(out_dir / 'y.npy', final_y)
-    print(f'[SAVE] {bag_name}: {final_X.shape} samples saved for CNN')
     np.save(out_dir / 'scans.npy', np.array(synced_scans))
     np.save(out_dir / 'steers.npy', np.array(synced_steers))
     np.save(out_dir / 'speeds.npy', np.array(synced_speeds))
@@ -59,30 +49,11 @@ def extract_and_save_per_bag(bag_path, output_dir, scan_topic, cmd_topic):
 
 def extract_all_bags_in_dir(bags_dir, output_dir, scan_topic, cmd_topic):
     bags_dir = Path(bags_dir).expanduser().resolve()
-    out_dir = Path(output_dir)
-    out_dir.mkdir(parents=True, exist_ok=True)
-    
     bag_dirs = sorted([p for p in bags_dir.iterdir() if (p / 'metadata.yaml').exists()])
-    
-    all_x = []
-    all_y = []
 
     print(f"[INFO] Found {len(bag_dirs)} rosbag directories.")
     for bag_path in bag_dirs:
-        X, y = extract_data_only(bag_path, scan_topic, cmd_topic)
-        if X is not None:
-            all_X.append(X)
-            all_y.append(y)
         extract_and_save_per_bag(bag_path, output_dir, scan_topic, cmd_topic)
-        
-    if all_X:
-        final_X = np.concatenate(all_X, axis=0)
-        final_y = np.concatenate(all_y, axis=0)
-
-        # 全データまとまった状態で1つ保存
-        np.save(out_dir / 'X_all.npy', final_X)
-        np.save(out_dir / 'y_all.npy', final_y)
-        print(f"[SUCCESS] Saved combined dataset: {final_X.shape}")
 
 
 if __name__ == '__main__':

@@ -22,7 +22,8 @@ class JetRacerDriver(Node):
         self.declare_parameter('throttle_gain', 1.0)        # スロットルゲイン
         self.declare_parameter('steering_gain', 1.0)        # ステアリングゲイン
 
-        self.car = NvidiaRacecar(steering_channel=2, throttle_channel=1)
+        #self.car = NvidiaRacecar()
+        self.car = NvidiaRacecar(i2c_bus=1,steering_channel=1, throttle_channel=2)
         self.last_cmd_time = self.get_clock().now()
         self.car.throttle = 0.0
         self.car.steering = 0.0
@@ -60,6 +61,8 @@ class JetRacerDriver(Node):
         self.get_logger().info(f'{name} updated to: {value:.3f}')
 
     def _cmd_cb(self, msg: AckermannDrive):
+    	#デバッグ用
+    	self.get_logger().info(f'Received: Speed={msg.speed:.2f}, Steer={msg.steering_angle:.2f}')
         # パラメータを取得
         steering_offset = self._get_param('steering_offset')
         throttle_offset = self._get_param('throttle_offset')
@@ -72,7 +75,7 @@ class JetRacerDriver(Node):
         throttle = (msg.speed * throttle_gain) + throttle_offset
         if throttle_inversion:
             throttle *= -1.0
-        throttle = max(min(throttle, 1.0), -1.0) # -1.0 から 1.0 の範囲にクリッピング
+        throttle = (max(min(throttle, 1.0), -1.0)) * (-1) # -1.0 から 1.0 の範囲にクリッピング 
 
         # ステアリング計算
         steering = (msg.steering_angle * steering_gain) + steering_offset

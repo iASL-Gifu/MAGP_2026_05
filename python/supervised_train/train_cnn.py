@@ -16,6 +16,9 @@ def main(cfg: DictConfig) -> None:
     print("---------------------")
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    print("DEVICE:", device)
+    print("CUDA available:", torch.cuda.is_available())
+    print("GPU name:", torch.cuda.get_device_name(0) if torch.cuda.is_available() else "None")
     data_path = hydra.utils.to_absolute_path(cfg.data_path)
     
     # --- データセットとデータローダーの準備 ---
