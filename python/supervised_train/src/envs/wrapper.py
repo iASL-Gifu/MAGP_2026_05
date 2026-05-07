@@ -175,3 +175,35 @@ class F110Wrapper(gym.Wrapper):
         # 座標も更新する（カメラが動く場合）
         self.speed_label.x = left
         self.speed_label.y = top - 30
+
+    def render_waypoints(self, renderer):
+        """
+        Waypoint を描画するコールバック。
+        古い頂点リストは毎回削除してから、新しいものを登録します。
+        """
+        # 1) Waypoints 未設定時は何もしない
+        if self.map_manager.waypoints is None:
+            return
+
+        # 2) 前回のウェイポイントをクリア
+        for vlist in self._waypoint_vlists:
+            vlist.delete()
+        self._waypoint_vlists.clear()
+
+        # 3) 座標変換・スケーリング
+        points = np.vstack((
+            self.map_manager.waypoints[:, 0],
+            self.map_manager.waypoints[:, 1]
+        )).T
+        scaled = 50. * points
+
+        # 4) 新しいウェイポイントを登録
+        for i, (x, y) in enumerate(scaled):
+            # ターゲット waypoint を赤、それ以外を灰にするならここで色分け
+            color = [255, 0, 0] if i == 0 else [200, 200, 200]
+            v = renderer.batch.add(
+                1, GL_POINTS, None,
+                ('v3f/stream', [x, y, 0.]),
+                ('c3B/stream', color)
+            )
+            self._waypoint_vlists.append(v)
