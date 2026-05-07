@@ -19,7 +19,7 @@ def main(cfg: DictConfig):
 
     # --- 環境／プランナ／エージェント等の初期化 ---
     map_manager = MapManager(
-        map_name=MAP_DICT[0],
+        map_name=cfg.envs.map_name,
         map_ext=cfg.envs.map.ext,
         speed=cfg.envs.map.speed,
         downsample=cfg.envs.map.downsample,

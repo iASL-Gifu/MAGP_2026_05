@@ -2,7 +2,7 @@
 model_name: "TinyLidarActionLstmPPO"
 total_timesteps: 1e7
 steps_per_round: 100000
-learning_rate: 0.00005
+learning_rate: 0.00015
 
 n_steps: 2048
 ent_coef: 0.01
@@ -27,14 +27,14 @@ envs:
   speed_range: 10.0 ## 車両の速度範囲
   render_mode: human_fast ## human or human_fast
   map:
-    name: IMS ## マップの名前
+    name: Austin ## マップの名前
     ext: .png ## マップの拡張子
     line_type: center ## center or race
     speed: 8.0 ## waypointの速度
     downsample: 1 ## マップのダウンサンプリング
 
     ## planner用の設定
-    use_dynamic_speed: true ## 動的な速度を使用するかどうか
+    use_dynamic_speed: true ## 動的な速度を使用するかどうかｚ
     a_lat_max: 1.0 ## 最大横加速度
     smooth_sigma: 3 ## スムージングのsigmaa
 

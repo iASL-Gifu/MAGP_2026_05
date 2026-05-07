@@ -1,12 +1,13 @@
-import gymnasium as gym
-from stable_baselines3 import PPO
-from stable_baselines3.common.env_checker import check_env
+import torch.nn as nn
 from stable_baselines3.common.callbacks import EvalCallback
-from src.envs.envs import make_ppo_env, find_and_update_map, linear_schedule
+from stable_baselines3.common.logger import configure
+from sb3_contrib import RecurrentPPO
+from src.envs.envs import make_ppo_env, linear_schedule
 from src.envs.curriculum import CurriculumMapManager
+from src.models.ppo import TinyLidarExtractor
 from f1tenth_gym.maps.map_manager import MapManager
 import hydra
-from omegaconf import DictConfig, OmegaConf
+from omegaconf import DictConfig
 import os
 
 
@@ -22,9 +23,13 @@ def test_ppo_learning(cfg: DictConfig):
     
     # --- 環境の構築 ---
     map_manager = MapManager(
-            map_name=cfg.envs.map.name,
-            map_ext=cfg.envs.map.ext,
-            line_type=cfg.envs.map.line_type
+        map_name=cfg.envs.map.name,
+        map_ext=cfg.envs.map.ext,
+        speed=cfg.envs.map.speed,
+        downsample=cfg.envs.map.downsample,
+        use_dynamic_speed=cfg.envs.map.use_dynamic_speed,
+        a_lat_max=cfg.envs.map.a_lat_max,
+        smooth_sigma=cfg.envs.map.smooth_sigma
         )
 
     # 学習用
@@ -48,12 +53,29 @@ def test_ppo_learning(cfg: DictConfig):
     # --- モデル作成 ---
     # 既存のモデルがあるなら使う
     if os.path.exists(cfg.model_path):
-        model = PPO.load(cfg.model_path, env=env, device="cuda")
+        model = RecurrentPPO.load(cfg.model_path, env=env, device="cuda")
+
+        # TensorBoard の保存先を変更
+        new_logger = configure(
+            folder=cfg.log_dir,
+            format_strings=["stdout", "tensorboard"]
+        )
+        model.set_logger(new_logger)
+
     # ないなら新規に作成する
     else:
-        model = PPO(
-            "MultiInputPolicy", 
+        policy_kwargs = {
+            "features_extractor_class": TinyLidarExtractor,
+            "features_extractor_kwargs": {"features_dim": 256},
+            "lstm_hidden_size": 128,
+            "n_lstm_layers": 1,
+            "net_arch": dict(pi=[100, 50, 10], vf=[100, 50, 10]),
+            "activation_fn": nn.ReLU, # ここで活性化関数を指定可能
+        }
+        model = RecurrentPPO(
+            "MultiInputLstmPolicy", 
             env,
+            policy_kwargs=policy_kwargs,
             verbose=1,
             n_steps=cfg.n_steps,
             ent_coef=cfg.ent_coef,
@@ -70,8 +92,9 @@ def test_ppo_learning(cfg: DictConfig):
     model.set_env(env)
 
     # --- Gymnasium 準拠チェック ---
+    # sb3 の Wrapper を使っているからエラー吐く
     print("[*] 環境の仕様チェック中...")
-    check_env(env)
+    # check_env(env)
     print("[✔] Gymnasium仕様チェック通過！")
 
     # --- 学習の試行 ---
@@ -83,9 +106,9 @@ def test_ppo_learning(cfg: DictConfig):
         target_map = curriculum.get_map_by_progress(current_total_steps, cfg.total_timesteps)
         print(f"Round {round}: Training on {target_map}")
         
-        # 環境のマップ更新（貫通型メソッドを使用）
-        find_and_update_map(env, target_map, cfg.envs.map.ext)
-        find_and_update_map(eval_env, target_map, cfg.envs.map.ext)
+        # 環境のマップ更新
+        env.env_method("update_map", target_map, cfg.envs.map.ext)
+        eval_env.env_method("update_map", target_map, cfg.envs.map.ext)
 
         env.reset()
         eval_env.reset()

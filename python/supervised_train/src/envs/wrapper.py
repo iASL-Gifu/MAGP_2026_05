@@ -219,7 +219,6 @@ class F110Wrapper(gym.Wrapper):
 class PPOWrapper(gym.Wrapper):
     """
     強化学習 (Stable Baselines3) 専用の独立したラッパークラス。
-    F110Wrapper を継承せず、多層ラッパー構造（TimeLimit等）に強い設計。
     """
     def __init__(self, env, map_manager: MapManager, training=False):
         # 親クラス (gym.Wrapper) を初期化。これにより self.env が設定されます。
@@ -237,6 +236,7 @@ class PPOWrapper(gym.Wrapper):
         self.needs_waypoint_refresh = True
 
         self.prev_steering = 0.0
+        self.prev_idx = 0
         self.noise_std = 0.05
         self.debug_count = 0
         self.speed = 0.0
@@ -244,7 +244,7 @@ class PPOWrapper(gym.Wrapper):
         # --- 観測・アクション空間の定義 ---
         self.observation_space = spaces.Dict({
             "scans": spaces.Box(low=0.0, high=35.0, shape=(inner.num_beams,), dtype=np.float32),
-            "state": spaces.Box(low=-20.0, high=20.0, shape=(3,), dtype=np.float32)
+            "state": spaces.Box(low=-1.0, high=1.0, shape=(2,), dtype=np.float32)
         })
         
         self.action_space = spaces.Box(
@@ -387,33 +387,70 @@ class PPOWrapper(gym.Wrapper):
         return d, vs, vd, idx
 
     def compute_reward(self, d, vs, vd, idx, obs, info, action):
-        reward = 0.01
+        # 生存報酬
+        reward = 0.05
         terminated = False
 
         # 衝突ペナルティ
         if np.any(info.get('collision', 0) > 0):
-            return -1000.0, True
+            return -100.0, True
+        
+        # 進捗報酬
+        n_wp = len(self.map_manager.waypoints)
+        progress = idx - self.prev_idx
+        if progress < -n_wp / 2:
+            progress += n_wp
+        elif progress > n_wp / 2:
+            progress -= n_wp
+        progress = max(0, progress)
+        reward += 5.0 * progress
+        self.prev_idx = idx
         
         # 速度報酬
-        reward += 1.0 * vs
-        reward -= 0.01 * abs(vd)
+        reward += 1.0 * min(8.0, vs)
+        reward -= 0.05 * abs(vd)
 
-        reward -= 0.05 * abs(d)
+        # センターラインから逸れたら減点
+        reward -= 1.0 * abs(d)
         
         # 停止ペナルティ
-        if abs(obs["linear_vels_x"][0]) <= 0.25:
-            reward -= 2.0
+        stop_penalty = max(0, 0.5 - vs)
+        reward -= 4.0 * stop_penalty
+
+        # 向心加速度ペナルティ
+        kappa = abs(self.map_manager.curvatures[idx])
+        lateral_g = (vs ** 2) * kappa
+        g_threshold = 6.0
         
-        # 角速度ペナルティ
-        w = obs['ang_vels_z'][0]
-        reward -= 0.05 * abs(w)
+        if lateral_g > g_threshold:
+            reward -= 2.0 * (lateral_g - g_threshold)
+
+        # ターゲット速度ペナルティ
+        target_v = self.map_manager.waypoints[idx, 2] + 1.0
+        if vs > target_v:
+            # 目標速度を超えた分だけ罰則を与える
+            reward -= 1.0 * (vs - target_v)
 
         # 5. 壁への接近ペナルティ
         scans = obs['scans'][0]
         min_distance = np.min(scans)
         distance_threshold = 0.5
         if min_distance < distance_threshold:
-            reward -= 0.01 * (distance_threshold - min_distance)
+            reward -= 5.0 * (distance_threshold - min_distance)
+
+        # 100ステップに1回、計算結果をプリント
+        if self.debug_count % 100 == 0:
+            target_v = self.map_manager.waypoints[idx, 2]
+            p_accel = max(0.0, 2.0 * (lateral_g - 6.0))
+            p_target = max(0.0, 1.0 * (vs - target_v))
+            
+            # 全ての情報を1行にまとめ、先頭に \r を付与
+            log_text = (
+                f"\r[Debug] idx:{idx:3} prog:{progress:2} | vx:{obs['linear_vels_x'][0]:.2f} vs:{vs:.2f} tv:{target_v:.2f} | "
+                f"k:{kappa:.4f} | P_Acc:-{p_accel:.2f} P_Tgt:-{p_target:.2f} | Rew:{reward:.2f}"
+            )
+            # 改行せずに上書き出力
+            print(log_text, end="", flush=True)
 
         return reward, terminated
 
@@ -440,7 +477,7 @@ class PPOWrapper(gym.Wrapper):
 
         # 3. waypoint作成と情報の抽出 (F110Wrapper の step 内にあった処理)
         current_pos = np.array([obs['poses_x'][0], obs['poses_y'][0]])
-        waypoint = self.map_manager.get_future_waypoints(current_pos, num_points=10)
+        waypoint, base_idx = self.map_manager.get_future_waypoints(current_pos, num_points=10)
         
         info.update({
             'waypoint': waypoint,
@@ -459,17 +496,20 @@ class PPOWrapper(gym.Wrapper):
         if obs['lap_counts'][0] == 1: terminated = True
 
         # 5. 報酬計算
-        d, vs, vd, idx = self._get_frenet_state(current_pos, self.speed, obs['poses_theta'][0], waypoint)
-        reward, terminated = self.compute_reward(d, vs, vd, idx, obs, info, action)
+        d, vs, vd, local_idx = self._get_frenet_state(current_pos, self.speed, obs['poses_theta'][0], waypoint)
+        global_idx = (base_idx + local_idx) % len(self.map_manager.waypoints)
+        reward, terminated = self.compute_reward(d, vs, vd, global_idx, obs, info, action)
 
         # 6. 観測データの整形
+        self.last_action = np.array(action, dtype=np.float32).flatten()
         obs_dict = {
             "scans": obs['scans'][0].astype(np.float32),
-            "state": np.array([vs, vd, action[0][0]], dtype=np.float32)
+            "state": self.last_action
         }
 
         # --- ログ表示 ---
         self.debug_count += 1
+        '''
         if self.debug_count % 100 == 0:
             if self.training:
 
@@ -479,6 +519,7 @@ class PPOWrapper(gym.Wrapper):
                     print(f"  !!! WARNING: Negative Reward Spike ({reward:.2f}) !!!")
             else:
                 print(f"\r[EVAL] Steps: {self.debug_count}/10000 | Speed: {vs:.2f}", end="")
+        '''
 
         return obs_dict, float(reward), terminated, truncated, info
 
@@ -518,16 +559,19 @@ class PPOWrapper(gym.Wrapper):
         obs, info = self.env.reset(seed=seed, options=options)
         
         self.prev_steering = 0.0
+        self.prev_idx = 0
         self.debug_count = 0
 
         # 初期状態の情報を取得
         current_pos = np.array([obs['poses_x'][0], obs['poses_y'][0]])
-        waypoint = self.map_manager.get_future_waypoints(current_pos, num_points=10)
-        d, vs, vd, idx = self._get_frenet_state(current_pos, 0.0, obs['poses_theta'][0], waypoint)
+        waypoint, base_idx = self.map_manager.get_future_waypoints(current_pos, num_points=10)
+        d, vs, vd, local_idx = self._get_frenet_state(current_pos, 0.0, obs['poses_theta'][0], waypoint)
 
+        # 観測データの整形
+        self.last_action = np.array([0.0, 0.0], dtype=np.float32)
         obs_dict = {
             "scans": obs['scans'][0].astype(np.float32),
-            "state": np.array([vs, vd, 0.0], dtype=np.float32)
+            "state": self.last_action
         }
         return obs_dict, info
 

@@ -18,7 +18,11 @@ def main(cfg: DictConfig):
     map_manager = MapManager(
         map_name=MAP_DICT[0],
         map_ext=cfg.envs.map.ext,
-        line_type=cfg.envs.map.line_type
+        speed=cfg.envs.map.speed,
+        downsample=cfg.envs.map.downsample,
+        use_dynamic_speed=cfg.envs.map.use_dynamic_speed,
+        a_lat_max=cfg.envs.map.a_lat_max,
+        smooth_sigma=cfg.envs.map.smooth_sigma
     )
     env = make_ppo_env(cfg.envs, map_manager, cfg.vehicle, False)
     
@@ -41,40 +45,31 @@ def main(cfg: DictConfig):
         with open(csv_file, mode='w', newline='') as file:
             csv.writer(file).writerow(["x", "y", "velocity"])
 
-        curr = env
-        while curr is not None:
-            # 現在の層が update_map を持っているか確認
-            if hasattr(curr, 'update_map'):
-                curr.update_map(map_name, cfg.envs.map.ext)
-                break
-
-            # 次の層（内側の env）へ進む
-            curr = getattr(curr, 'env', None)
-
-        obs, info = env.reset()
+        env.env_method("update_map", map_name, cfg.envs.map.ext)
+        obs = env.reset()
         done = False
         while not done:
             # PPOによる予測 (deterministic=True で学習時の探索をOFFにする)
             action, _states = model.predict(obs, deterministic=True)
             
             # --- 環境のステップ実行 ---
-            next_obs, reward, terminated, truncated, info = env.step(action)
+            next_obs, reward,done, info = env.step(action)
             
             # --- 終了判定の整理 ---
-            is_collision = info.get('collision', False)
-            lap_times = info.get('lap_times', 0.0)[0]
+            is_collision = info[0].get('collision', False)
+            lap_times = info[0].get('lap_times', 0.0)[0]
 
             # 終了判定
-            done = terminated or truncated or is_collision
+            done = done or is_collision
             
-            is_lap_finished = info.get('lap_counts', [0])[0] >= 1
+            is_lap_finished = info[0].get('lap_counts', [0])[0] >= 1
             
             done = done or is_lap_finished
 
             # --- データの記録 ---
-            curr_x = info.get('current_pos', [0.0])[0]
-            curr_y = info.get('current_pos', [0.0])[1]
-            vel = info.get('velocity', 0)
+            curr_x = info[0].get('current_pos', [0.0])[0]
+            curr_y = info[0].get('current_pos', [0.0])[1]
+            vel = info[0].get('velocity', 0)
 
             with open(csv_file, mode='a', newline='') as file:
                 csv.writer(file).writerow([curr_x, curr_y, vel])
@@ -85,7 +80,7 @@ def main(cfg: DictConfig):
                     with open(lap_file, mode='a', newline='') as file:
                         csv.writer(file).writerow(["Crash", 0.0])
                 elif is_lap_finished:
-                    final_time = info.get('lap_times', [0.0])[0]
+                    final_time = info[0].get('lap_times', [0.0])[0]
                     print(f"  -> Lap Complete! Time: {final_time:.2f}s")
                     with open(lap_file, mode='a', newline='') as file:
                         csv.writer(file).writerow([1, format(final_time, '.2f')])
@@ -93,6 +88,7 @@ def main(cfg: DictConfig):
 
             if cfg.render:
                 env.unwrapped.render(cfg.render_mode)
+                env.env_method("render")
 
             obs = next_obs
     env.close()

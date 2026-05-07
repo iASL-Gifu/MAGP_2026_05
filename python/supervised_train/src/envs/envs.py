@@ -1,11 +1,12 @@
 from typing import Dict
 from omegaconf import DictConfig
 from f1tenth_gym.f110_env import F110Env
-import gymnasium as gym
 from gymnasium.wrappers import TimeLimit
 from gymnasium.wrappers import RescaleAction
 from .wrapper import F110Wrapper, PPOWrapper
 from f1tenth_gym.maps.map_manager import MapManager
+from stable_baselines3.common.monitor import Monitor
+from stable_baselines3.common.vec_env import DummyVecEnv
 
 def make_env(env_cfg: DictConfig, map_manager: MapManager,  param: Dict):
     map_name = map_manager.map_path ## マップの名前 
@@ -45,6 +46,8 @@ def make_ppo_env(env_cfg, map_manager, param, training):
     # アクションの正規化 ([-1, 1])
     env = RescaleAction(env, min_action=-1.0, max_action=1.0)
 
+    env = Monitor(env)
+    env = DummyVecEnv([lambda: env])
     return env
 
 def linear_schedule(start_lr: float, end_lr: float):
