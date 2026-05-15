@@ -12,6 +12,8 @@
     # --- start/stop トリガボタン ---
     start_button_index:   7   # R2 ボタンで start=true humble: 7, foxy: 7
     stop_button_index:    6   # L2 ボタンで start=false humble: 6, foxy: 6
+    cut_stop_button_index: 4  # L1: 特殊停止（5秒カットして保存）
+    
 
 ## button index (DualShock4) humble
 ## humble humble humble

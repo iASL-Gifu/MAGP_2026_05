@@ -1,0 +1,583 @@
+[33mcommit ef4b83529927f4af3126b40ab90b21b9d711f4eb[m[33m ([m[1;36mHEAD -> [m[1;32mjetson[m[33m, [m[1;31morigin/jetson[m[33m)[m
+Author: Reina Uchiyama <reina11030530@gmail.com>
+Date:   Thu Apr 30 21:34:07 2026 +0900
+
+    test
+
+[33mcommit f6c7b77d088d094e8645bed916e29178d7da5d51[m
+Author: Reina Uchiyama <reina11030530@gmail.com>
+Date:   Thu Apr 30 21:27:02 2026 +0900
+
+    new
+
+[33mcommit b7d39e85734b324aace912560caae54643320122[m
+Author: Reina Uchiyama <reina11030530@gmail.com>
+Date:   Thu Apr 30 20:58:42 2026 +0900
+
+    new
+
+[33mcommit b798ba1c171c0a6f97b0d42c3d4abb4927c63be2[m[33m ([m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m, [m[1;32morigin/jetson[m[33m, [m[1;32mmain[m[33m)[m
+Author: Arata Tanaka <ky.37f.9850@s.thers.ac.jp>
+Date:   Sat Jul 5 00:15:10 2025 +0900
+
+    add model param
+
+[33mcommit 36bfe1a71b3bc07149934c94b2a610bb569daf06[m
+Author: Arata Tanaka <ky.37f.9850@s.thers.ac.jp>
+Date:   Fri Jul 4 23:54:27 2025 +0900
+
+    fix action filter
+
+[33mcommit ef72c840d89ccac1acb24964057861707958cd2d[m
+Merge: c89d7a4 bc30635
+Author: AT <147399193+Arata-Stu@users.noreply.github.com>
+Date:   Fri Jul 4 23:48:56 2025 +0900
+
+    Merge pull request #31 from iASL-Gifu/param
+    
+    edit: param loader
+
+[33mcommit c89d7a47e583ccd8771da2ba70363d52ec332e85[m
+Merge: edfe8b4 d85e205
+Author: AT <147399193+Arata-Stu@users.noreply.github.com>
+Date:   Fri Jul 4 23:48:27 2025 +0900
+
+    Merge pull request #30 from iASL-Gifu/bluetooth
+    
+    Bluetooth
+
+[33mcommit d85e2055ab059bf929bd2b2a063e6dccfc6e155c[m[33m ([m[1;31morigin/bluetooth[m[33m)[m
+Author: Arata Tanaka <ky.37f.9850@s.thers.ac.jp>
+Date:   Fri Jul 4 23:47:54 2025 +0900
+
+    delete comment
+
+[33mcommit d585a16f98cc98ddf4d9c492f14319fda753f1b2[m
+Author: Arata Tanaka <ky.37f.9850@s.thers.ac.jp>
+Date:   Fri Jul 4 21:50:46 2025 +0900
+
+    add scripts for bluetooth
+
+[33mcommit bc30635e77e591c71da200450304e929464854ba[m[33m ([m[1;31morigin/param[m[33m)[m
+Author: Arata Tanaka <ky.37f.9850@s.thers.ac.jp>
+Date:   Fri Jul 4 20:52:25 2025 +0900
+
+    edit: param loader
+
+[33mcommit edfe8b4acc88b4435b9b736594130b3079103cc5[m
+Author: Arata Tanaka <ky.37f.9850@s.thers.ac.jp>
+Date:   Fri Jul 4 20:46:11 2025 +0900
+
+    fix: action filter
+
+[33mcommit 05767613160b15a9b1125ea57f4955fce1298237[m
+Author: Arata Tanaka <ky.37f.9850@s.thers.ac.jp>
+Date:   Fri Jul 4 10:27:51 2025 +0900
+
+    edit: safety joy manager
+
+[33mcommit 878578265fa2e31932bc543f08a3028369ced70e[m
+Author: Tanaka Arata <ky.37f.9850@s.thers.ac.jp>
+Date:   Thu Jul 3 14:17:12 2025 +0900
+
+    add scripts file for train
+
+[33mcommit fafa95043a005d2065ee171cb31855c07c9750fb[m
+Author: Arata Tanaka <ky.37f.9850@s.thers.ac.jp>
+Date:   Thu Jul 3 14:12:25 2025 +0900
+
+    fix python cnn models
+
+[33mcommit 1f7552f7d0c15055c4a3668b9333972e1aeeddd7[m
+Author: Arata Tanaka <ky.37f.9850@s.thers.ac.jp>
+Date:   Wed Jul 2 02:53:58 2025 +0900
+
+    bit change
+
+[33mcommit c717118aa4914ed193d0fb647624aeb59527312f[m
+Author: Arata Tanaka <ky.37f.9850@s.thers.ac.jp>
+Date:   Wed Jul 2 02:50:17 2025 +0900
+
+    bit change
+
+[33mcommit 00b7804c0f2d67923b0e379bad0bde3f93c09438[m
+Author: Arata Tanaka <ky.37f.9850@s.thers.ac.jp>
+Date:   Wed Jul 2 02:46:53 2025 +0900
+
+    bit fix
+
+[33mcommit d318c6dda4b2361fc79a3a7fe56c8e63688ac3fb[m
+Author: Arata Tanaka <ky.37f.9850@s.thers.ac.jp>
+Date:   Wed Jul 2 02:45:43 2025 +0900
+
+    fix
+
+[33mcommit 96a380c06b604679556eaca4b551681c7ea8e34c[m
+Author: Arata Tanaka <ky.37f.9850@s.thers.ac.jp>
+Date:   Wed Jul 2 02:40:02 2025 +0900
+
+    fix maxt node
+
+[33mcommit c28c9802bbf210c0ab76a973d62f9d8fc177ea07[m
+Author: Arata Tanaka <ky.37f.9850@s.thers.ac.jp>
+Date:   Wed Jul 2 02:06:50 2025 +0900
+
+    fix action filter
+
+[33mcommit 017a787b1b49649f5bb4b77adf8aa3204bc50188[m
+Merge: c733584 42bf2c3
+Author: AT <147399193+Arata-Stu@users.noreply.github.com>
+Date:   Wed Jul 2 01:32:16 2025 +0900
+
+    Merge pull request #29 from iASL-Gifu/filters
+    
+    edit: launch
+
+[33mcommit 42bf2c3bb964ad06a14c08b1a97d355666c5b9ce[m[33m ([m[1;31morigin/filters[m[33m)[m
+Author: Arata Tanaka <ky.37f.9850@s.thers.ac.jp>
+Date:   Wed Jul 2 01:31:41 2025 +0900
+
+    edit: launch
+
+[33mcommit c7335849f0c12e95546234b63d04e03bfb86ec22[m
+Merge: b755da2 b683cf0
+Author: AT <147399193+Arata-Stu@users.noreply.github.com>
+Date:   Mon Jun 30 23:57:29 2025 +0900
+
+    Merge pull request #28 from iASL-Gifu/filters
+    
+    update action filter
+
+[33mcommit b683cf00cbba635d78a5228432315e07a6300330[m
+Author: Arata Tanaka <ky.37f.9850@s.thers.ac.jp>
+Date:   Mon Jun 30 23:55:03 2025 +0900
+
+    update action filter
+
+[33mcommit b755da27c9bdf103852f93d4d80289732c769a6d[m
+Merge: 4a45ce8 5e49b05
+Author: AT <147399193+Arata-Stu@users.noreply.github.com>
+Date:   Mon Jun 30 18:33:21 2025 +0900
+
+    Merge pull request #27 from iASL-Gifu/maxt_
+    
+    edit
+
+[33mcommit 5e49b0585b72c4df569f8ebbfa74b835a897e568[m[33m ([m[1;31morigin/maxt_[m[33m)[m
+Author: Arata Tanaka <ky.37f.9850@s.thers.ac.jp>
+Date:   Mon Jun 30 18:32:19 2025 +0900
+
+    edit
+
+[33mcommit 4a45ce8670f595cf0f66cf60d0c727b4f2200fa9[m
+Merge: 414741f 1f8562f
+Author: AT <147399193+Arata-Stu@users.noreply.github.com>
+Date:   Mon Jun 30 17:27:50 2025 +0900
+
+    Merge pull request #26 from iASL-Gifu/filter
+    
+    Filter
+
+[33mcommit 1f8562f85ee2f82423b4875e4fc96e81c025cdf7[m[33m ([m[1;31morigin/filter[m[33m)[m
+Author: Arata Tanaka <ky.37f.9850@s.thers.ac.jp>
+Date:   Mon Jun 30 17:27:18 2025 +0900
+
+    add action filter node
+
+[33mcommit cef4f89eb9bc2b56a99ba21ae4706dc981d25589[m
+Author: Arata Tanaka <ky.37f.9850@s.thers.ac.jp>
+Date:   Mon Jun 30 17:10:41 2025 +0900
+
+    add ignore
+
+[33mcommit 414741f1e591ccad758d779849bbb5682fb14c11[m
+Merge: 977f3ad 3b7ff4e
+Author: AT <147399193+Arata-Stu@users.noreply.github.com>
+Date:   Fri Jun 27 03:51:25 2025 +0900
+
+    Merge pull request #25 from iASL-Gifu/convlstm
+    
+    fix rnn state
+
+[33mcommit 3b7ff4e1ee281b65e441af4008e30f9a1089a603[m
+Author: Tanaka Arata <ky.37f.9850@s.thers.ac.jp>
+Date:   Fri Jun 27 03:50:39 2025 +0900
+
+    fix rnn state
+
+[33mcommit 977f3ad37192b7fb2ace3eb31924421a0321dd14[m
+Author: Arata Tanaka <ky.37f.9850@s.thers.ac.jp>
+Date:   Thu Jun 26 17:41:47 2025 +0900
+
+    update readme
+
+[33mcommit 8a6087397d2a69a5f60654415bf5b858bbfeb7c8[m
+Author: Tanaka Arata <ky.37f.9850@s.thers.ac.jp>
+Date:   Thu Jun 26 16:33:03 2025 +0900
+
+    add mlp
+
+[33mcommit 447df2de8dde101350e6866f02d1b4eb6ce3fae6[m
+Author: Tanaka Arata <ky.37f.9850@s.thers.ac.jp>
+Date:   Thu Jun 26 16:25:02 2025 +0900
+
+    revret mlp
+
+[33mcommit 5d571aaba0edc068a7893ca640d51f73c43f2324[m
+Merge: 6961639 030e14f
+Author: AT <147399193+Arata-Stu@users.noreply.github.com>
+Date:   Thu Jun 26 16:14:38 2025 +0900
+
+    Merge pull request #24 from iASL-Gifu/gnn
+    
+    add mlp model
+
+[33mcommit 030e14f6a402f5d52707f495a2a94da56171d29f[m
+Author: Tanaka Arata <ky.37f.9850@s.thers.ac.jp>
+Date:   Thu Jun 26 16:13:47 2025 +0900
+
+    add mlp model
+
+[33mcommit 696163947a1a123923d990c7bd53a73231d45599[m
+Merge: ae63ffa 093cfb4
+Author: AT <147399193+Arata-Stu@users.noreply.github.com>
+Date:   Thu Jun 26 15:41:39 2025 +0900
+
+    Merge pull request #23 from iASL-Gifu/gnn
+    
+    bit fix
+
+[33mcommit 093cfb49e43ccf87f8e3deace318e68fdb02e6db[m
+Author: Tanaka Arata <ky.37f.9850@s.thers.ac.jp>
+Date:   Thu Jun 26 15:41:15 2025 +0900
+
+    bit fix
+
+[33mcommit ae63ffad19a1a22d56b6a2d7b6d58425639fb831[m
+Merge: 06ffb53 43e0c72
+Author: AT <147399193+Arata-Stu@users.noreply.github.com>
+Date:   Thu Jun 26 13:30:03 2025 +0900
+
+    Merge pull request #22 from iASL-Gifu/gnn
+    
+    revert gnn
+
+[33mcommit 43e0c723ae6c06c82e8386f33728bc6d0b395852[m
+Author: Arata Tanaka <ky.37f.9850@s.thers.ac.jp>
+Date:   Thu Jun 26 13:29:04 2025 +0900
+
+    revert gnn
+
+[33mcommit 06ffb5374bb4b9dbccc2f31035159be14f1e1fc7[m
+Merge: 3e5db86 1e0c708
+Author: AT <147399193+Arata-Stu@users.noreply.github.com>
+Date:   Thu Jun 26 12:00:42 2025 +0900
+
+    Merge pull request #21 from iASL-Gifu/keik
+    
+    fix
+
+[33mcommit 1e0c70867ca46d580d3abed3440e58e2f0cc9b2c[m[33m ([m[1;31morigin/keik[m[33m)[m
+Author: TakakuraKeitarou <tuna909ikura625@gmail.com>
+Date:   Thu Jun 26 11:58:48 2025 +0900
+
+    fix
+
+[33mcommit 3e5db86b8fdc758c03f08fb4655a993ef7dea156[m
+Author: Arata Tanaka <ky.37f.9850@s.thers.ac.jp>
+Date:   Sun Jun 22 22:29:02 2025 +0900
+
+    fix
+
+[33mcommit 431a3e0440ba37e52b31081a286a85528741ba0d[m
+Author: Arata Tanaka <ky.37f.9850@s.thers.ac.jp>
+Date:   Sun Jun 22 22:25:17 2025 +0900
+
+    bit change
+
+[33mcommit d40da40b16115b4d55aad9ac2ed8612ebe1b8a8e[m
+Author: Arata Tanaka <ky.37f.9850@s.thers.ac.jp>
+Date:   Sun Jun 22 22:23:56 2025 +0900
+
+    bit fix
+
+[33mcommit 9f94354b22d1cb10200ab07440c9b55d6939a194[m
+Author: Arata Tanaka <ky.37f.9850@s.thers.ac.jp>
+Date:   Sun Jun 22 22:21:26 2025 +0900
+
+    edit : maxt
+
+[33mcommit 8c96f6fa6153f5fbb9f973a1deeb292c0bdec13b[m
+Author: Arata Tanaka <ky.37f.9850@s.thers.ac.jp>
+Date:   Fri Jun 20 11:35:02 2025 +0900
+
+    update
+
+[33mcommit a76c1458e04d388379204c7d97cd7c0a14accd4b[m
+Author: Arata Tanaka <ky.37f.9850@s.thers.ac.jp>
+Date:   Fri Jun 20 11:28:17 2025 +0900
+
+    add: maxt1d node for ros2 e2e
+
+[33mcommit 2c2f8ca01e181ace5d7700a31f8de5527ffe8af4[m
+Author: Arata Tanaka <ky.37f.9850@s.thers.ac.jp>
+Date:   Fri Jun 20 11:23:06 2025 +0900
+
+    edit train cnn
+
+[33mcommit 1599b93b18d1645268a15935982728d334994113[m
+Author: Tanaka Arata <ky.37f.9850@s.thers.ac.jp>
+Date:   Thu Jun 19 10:50:38 2025 +0900
+
+    fix
+
+[33mcommit 0d5d3859ae3bdeeacad616c5ff624c48e1055550[m
+Author: Tanaka Arata <ky.37f.9850@s.thers.ac.jp>
+Date:   Thu Jun 19 10:50:22 2025 +0900
+
+    add: keirao train
+
+[33mcommit 69513a5bae0a5fe1a876ad1c0439431082714576[m
+Author: Tanaka Arata <ky.37f.9850@s.thers.ac.jp>
+Date:   Thu Jun 19 10:43:10 2025 +0900
+
+    update
+
+[33mcommit 059c900525c708213b388afc06c5732c35179ce4[m
+Author: Tanaka Arata <ky.37f.9850@s.thers.ac.jp>
+Date:   Thu Jun 19 09:46:27 2025 +0900
+
+    bit fix
+
+[33mcommit 3d13737492a6651ce0672888ea55e376db055dd5[m
+Author: Tanaka Arata <ky.37f.9850@s.thers.ac.jp>
+Date:   Thu Jun 19 08:27:42 2025 +0900
+
+    update: param loader
+
+[33mcommit 362e5b3ded9f4c3a491093de27ec1552a57f09f0[m
+Author: Tanaka Arata <ky.37f.9850@s.thers.ac.jp>
+Date:   Thu Jun 19 08:05:58 2025 +0900
+
+    edit tmux.sh
+
+[33mcommit 8a4a383d8b8bd7c8953412baff51dacb2de19a19[m
+Author: Tanaka Arata <ky.37f.9850@s.thers.ac.jp>
+Date:   Thu Jun 19 08:02:17 2025 +0900
+
+    add : param loader tool
+
+[33mcommit 8dd2a4b64562dc9b3661627b6df7441248f46596[m
+Author: Tanaka Arata <ky.37f.9850@s.thers.ac.jp>
+Date:   Thu Jun 19 07:23:15 2025 +0900
+
+    fix node
+
+[33mcommit 48f738ba985d2a8a956f4951651abe170a6b1d66[m
+Author: Tanaka Arata <ky.37f.9850@s.thers.ac.jp>
+Date:   Thu Jun 19 07:03:55 2025 +0900
+
+    update: maxt1d
+
+[33mcommit 9c4aa4cc40e77d3bb5fae35eac664cf7d0449268[m
+Author: Tanaka Arata <ky.37f.9850@s.thers.ac.jp>
+Date:   Thu Jun 19 07:01:59 2025 +0900
+
+    update
+
+[33mcommit 31b291a7592379ec181ef54c8f7b6220ff2c1e05[m
+Author: Tanaka Arata <ky.37f.9850@s.thers.ac.jp>
+Date:   Thu Jun 19 05:53:52 2025 +0900
+
+    add: module
+
+[33mcommit 55c63cbba0d12d3bbf485ac8047c1dbbdc55b2b3[m
+Merge: 98def4f 35af8d8
+Author: AT <147399193+Arata-Stu@users.noreply.github.com>
+Date:   Thu Jun 19 04:18:24 2025 +0900
+
+    Merge pull request #20 from iASL-Gifu/visualization
+    
+    add: topic visualization node
+
+[33mcommit 35af8d8761d3fdef2c071c1cab8556432d560a3f[m
+Author: Tanaka Arata <ky.37f.9850@s.thers.ac.jp>
+Date:   Thu Jun 19 04:17:22 2025 +0900
+
+    add: topic visualization node
+
+[33mcommit 98def4f6848bc77ea7ea14cc95c59d6fcfd17fdc[m
+Author: Arata Tanaka <ky.37f.9850@s.thers.ac.jp>
+Date:   Wed Jun 18 15:40:54 2025 +0900
+
+    edit: keitaro node
+
+[33mcommit 93b58da1600d039837c0dec2c6cc4ec2268d3f2e[m
+Author: Arata Tanaka <ky.37f.9850@s.thers.ac.jp>
+Date:   Wed Jun 18 15:38:55 2025 +0900
+
+    edit: gitignore
+
+[33mcommit 8ab69aea58680246d40c9b818d028fddd93aa10e[m
+Merge: 14554f6 6b4f927
+Author: AT <147399193+Arata-Stu@users.noreply.github.com>
+Date:   Wed Jun 18 15:36:42 2025 +0900
+
+    Merge pull request #19 from iASL-Gifu/gym
+    
+    Gym
+
+[33mcommit 6b4f9279825c28e4bba6b29f85a46735a765c65b[m
+Author: Tanaka Arata <ky.37f.9850@s.thers.ac.jp>
+Date:   Wed Jun 18 15:35:55 2025 +0900
+
+    add: action net
+
+[33mcommit eb532cfdc79f53624428cf888bbc5eeb31812c4c[m
+Author: Tanaka Arata <ky.37f.9850@s.thers.ac.jp>
+Date:   Wed Jun 18 04:08:26 2025 +0900
+
+    edit: stream datasets
+
+[33mcommit ade21458382e8f6c11ac8e78928b4af7a80411e4[m
+Author: Tanaka Arata <ky.37f.9850@s.thers.ac.jp>
+Date:   Wed Jun 18 03:53:29 2025 +0900
+
+    update
+
+[33mcommit bdde3a7d2087bf1eb3e180a00cae2dd0602e584b[m
+Author: Tanaka Arata <ky.37f.9850@s.thers.ac.jp>
+Date:   Wed Jun 18 03:45:57 2025 +0900
+
+    update
+
+[33mcommit 14554f65e35192aa729e6eccb327c39fe034b7d9[m
+Merge: 1384913 65e4bbd
+Author: AT <147399193+Arata-Stu@users.noreply.github.com>
+Date:   Mon Jun 16 01:05:32 2025 +0900
+
+    Merge pull request #18 from iASL-Gifu/gym
+    
+    Gym
+
+[33mcommit 65e4bbd50b8216c6df7ac5b4d4d9186937309e14[m
+Author: Tanaka Arata <ky.37f.9850@s.thers.ac.jp>
+Date:   Sun Jun 15 12:41:45 2025 +0900
+
+    fix dataloader
+
+[33mcommit 3e6a65a8fb4171fd8b46fd780fb2bb338da7c6ed[m
+Author: Tanaka Arata <ky.37f.9850@s.thers.ac.jp>
+Date:   Sun Jun 15 11:15:14 2025 +0900
+
+    add: collect data from sim
+
+[33mcommit 48ba89cc5980e9ee15bc1c14d1874d8a7a1a9c64[m
+Author: Tanaka Arata <ky.37f.9850@s.thers.ac.jp>
+Date:   Sun Jun 15 10:10:39 2025 +0900
+
+    add: f1tenth gym
+
+[33mcommit 13849131547ff6854cc1e11bdb11c0277d5a5740[m
+Author: Tanaka Arata <ky.37f.9850@s.thers.ac.jp>
+Date:   Sun Jun 15 10:02:24 2025 +0900
+
+    update: readme
+
+[33mcommit 5e5372cf825a48a6e658fedb429f873b8b33446d[m
+Author: Tanaka Arata <ky.37f.9850@s.thers.ac.jp>
+Date:   Sun Jun 15 09:56:01 2025 +0900
+
+    bit fix
+
+[33mcommit 2080e49401ca0b429d64b4c0b7bf0a61316ac37a[m
+Author: Tanaka Arata <ky.37f.9850@s.thers.ac.jp>
+Date:   Sun Jun 15 09:53:26 2025 +0900
+
+    bit fix
+
+[33mcommit 1e4132702829c41c47624be727d15fa437f734bb[m
+Merge: 94199c0 790076c
+Author: AT <147399193+Arata-Stu@users.noreply.github.com>
+Date:   Sun Jun 15 09:41:49 2025 +0900
+
+    Merge pull request #17 from iASL-Gifu/max1d
+    
+    Max1d
+
+[33mcommit 94199c01968e6c031a76ed81979c719951395a7b[m
+Author: Tanaka Arata <ky.37f.9850@s.thers.ac.jp>
+Date:   Sun Jun 15 09:40:44 2025 +0900
+
+    fix: stream dataset
+
+[33mcommit 790076c643ece3e14ec83dc17471ebe581572d12[m
+Author: Arata Tanaka <ky.37f.9850@s.thers.ac.jp>
+Date:   Sun Jun 15 08:17:08 2025 +0900
+
+    edit: e2e compile
+
+[33mcommit 99e5efe2e31c7b82ce15a6e249e95f26bff2f151[m
+Author: Arata Tanaka <ky.37f.9850@s.thers.ac.jp>
+Date:   Sun Jun 15 08:09:02 2025 +0900
+
+    remove: gnn
+
+[33mcommit 8ddd256240fd73268ae4dc2e2e1857e36f4e7a8f[m
+Author: Arata Tanaka <ky.37f.9850@s.thers.ac.jp>
+Date:   Sun Jun 15 08:06:20 2025 +0900
+
+    add 1d blocks
+
+[33mcommit 9fbe4a05406ead1e27f8f2e0e582aad24350a4cc[m
+Author: Tanaka Arata <ky.37f.9850@s.thers.ac.jp>
+Date:   Sat Jun 14 18:57:53 2025 +0900
+
+    bit change
+
+[33mcommit bfd52aa1063e7e6ec19c0d345193764a2b2d3b42[m
+Merge: 4dfcdb0 69bd529
+Author: AT <147399193+Arata-Stu@users.noreply.github.com>
+Date:   Sat Jun 14 00:07:04 2025 +0900
+
+    Merge pull request #16 from iASL-Gifu/augmnet
+    
+    add: augment
+
+[33mcommit 69bd529057215ecc478b56ac16c8d0f10255d3d8[m
+Author: Arata Tanaka <ky.37f.9850@s.thers.ac.jp>
+Date:   Sat Jun 14 00:06:41 2025 +0900
+
+    add: augment
+
+[33mcommit 4dfcdb07f8b50cca866acb704a2af369dbcfc056[m
+Merge: e2cc787 3fbea5e
+Author: AT <147399193+Arata-Stu@users.noreply.github.com>
+Date:   Fri Jun 13 23:29:08 2025 +0900
+
+    Merge pull request #15 from iASL-Gifu/atten
+    
+    Atten
+
+[33mcommit 3fbea5eb9798a6397a8210db23cb2e5f5e7c88e5[m
+Author: Arata Tanaka <ky.37f.9850@s.thers.ac.jp>
+Date:   Fri Jun 13 23:28:25 2025 +0900
+
+    add atten
+
+[33mcommit f081794c70df9d8a749a27bc815fd3190f86828c[m
+Author: Arata Tanaka <ky.37f.9850@s.thers.ac.jp>
+Date:   Fri Jun 13 23:24:40 2025 +0900
+
+    add: transformer
+
+[33mcommit e2cc7872cb4d8b5d0dab650dc285e025939fb862[m
+Merge: 8a05dfa f90241e
+Author: AT <147399193+Arata-Stu@users.noreply.github.com>
+Date:   Fri Jun 13 23:14:01 2025 +0900
+
+    Merge pull request #14 from iASL-Gifu/tbptt
+    
+    edit: stream datasets
+
+[33mcommit

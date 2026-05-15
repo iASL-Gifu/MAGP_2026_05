@@ -26,7 +26,8 @@ public:
     prev_speed_inc_pressed_(false),
     prev_speed_dec_pressed_(false),
     prev_scale_inc_pressed_(false),
-    prev_scale_dec_pressed_(false)
+    prev_scale_dec_pressed_(false),
+    prev_cut_stop_pressed_(false) // 追加
   {
     // --- パラメータ宣言＆取得 ---
     declare_parameter<double>("speed_scale", 1.0);
@@ -59,6 +60,7 @@ public:
 
     drive_pub_   = create_publisher<ackermann_msgs::msg::AckermannDrive>("/jetracer/cmd_drive", 10);
     trigger_pub_ = create_publisher<std_msgs::msg::Bool>("/rosbag2_recorder/trigger", 10);
+    cut_trigger_pub_ = create_publisher<std_msgs::msg::Bool>("/rosbag2_recorder/cut_trigger", 10);
 
     // オフセット調整用トリガー
     steer_inc_pub_ = create_publisher<std_msgs::msg::Bool>("/steer_offset_inc", 10);
@@ -151,17 +153,17 @@ private:
 
     // 4) R1/L1 での steer_scale 動的調整（連射防止）
     bool scale_inc = (msg->buttons.size() > 5 && msg->buttons[5] == 1); // R1
-    bool scale_dec = (msg->buttons.size() > 4 && msg->buttons[4] == 1); // L1
+    bool cut_stop = (msg->buttons.size() > 4 && msg->buttons[4] == 1); // L1
     if (check_button_press(scale_inc, prev_scale_inc_pressed_)) {
       steer_scale_ = std::round((steer_scale_ + 0.1) * 10.0) / 10.0;
       if (steer_scale_ < 0.1) steer_scale_ = 0.1; // steer_scale_が0にならないように修正
       RCLCPP_INFO(get_logger(), "steer_scale = %.1f", steer_scale_);
     }
-    if (check_button_press(scale_dec, prev_scale_dec_pressed_)) {
-      steer_scale_ = std::max(steer_scale_ - 0.1, 0.0); // 0.0より小さくならないように
-      steer_scale_ = std::round(steer_scale_ * 10.0) / 10.0;
-      if (steer_scale_ < 0.1 && steer_scale_ != 0.0) steer_scale_ = 0.1; // steer_scaleが0でない場合、最小値を0.1にする
-      RCLCPP_INFO(get_logger(), "steer_scale = %.1f", steer_scale_);
+    if (check_button_press(cut_stop, prev_cut_stop_pressed_)) {
+      std_msgs::msg::Bool b;
+      b.data = true;
+      cut_trigger_pub_->publish(b); // Python側へ通知
+      RCLCPP_INFO(get_logger(), "L1 Pressed: Trim stop signal sent.");
     }
   }
 
@@ -207,7 +209,9 @@ private:
   rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr                steer_dec_pub_;
   rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr                speed_inc_pub_;
   rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr                speed_dec_pub_;
+  rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr                cut_trigger_pub_; // 追加
   rclcpp::TimerBase::SharedPtr                                     timer_;
+
 
   // パラメータ
   double speed_scale_, steer_scale_;
@@ -228,6 +232,7 @@ private:
   bool prev_steer_inc_pressed_, prev_steer_dec_pressed_;
   bool prev_speed_inc_pressed_, prev_speed_dec_pressed_;
   bool prev_scale_inc_pressed_, prev_scale_dec_pressed_;
+  bool prev_cut_stop_pressed_; // 追加：連射防止フラグ
 };
 
 int main(int argc, char * argv[])
