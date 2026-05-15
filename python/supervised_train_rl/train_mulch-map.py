@@ -17,7 +17,7 @@ def test_ppo_learning(cfg: DictConfig):
     複数のマップで学習する
     '''
 
-    initial_learning_rate = cfg.learning_rate
+    initial_learning_rate = cfg.initial_learning_rate
 
     curriculum = CurriculumMapManager()
     total_timesteps = cfg.total_timesteps
@@ -36,7 +36,7 @@ def test_ppo_learning(cfg: DictConfig):
         )
 
     # 学習用
-    env = make_ppo_env(cfg.envs, map_manager, cfg.vehicle, True)
+    env = make_ppo_env(cfg.envs, map_manager, cfg.vehicle, True, num_envs=8)
     
     # 評価用（完全に別のインスタンスを作る）
     eval_env = make_ppo_env(cfg.envs, map_manager, cfg.vehicle, True)
@@ -94,11 +94,11 @@ def test_ppo_learning(cfg: DictConfig):
 
     model.set_env(env)
 
-    # --- Gymnasium 準拠チェック ---
-    # sb3 の Wrapper を使っているからエラー吐く
-    print("[*] 環境の仕様チェック中...")
-    # check_env(env)
-    print("[✔] Gymnasium仕様チェック通過！")
+    '''
+    eval_env.obs_rms = env.obs_rms
+    eval_env.training = False # 評価中に平均・分散を更新しない
+    eval_env.norm_reward = False # 評価に報酬正規化は不要
+    '''
 
     # --- 学習の試行 ---
     print("[*] 学習を開始します...")

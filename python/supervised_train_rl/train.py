@@ -1,6 +1,7 @@
 import torch.nn as nn
 from stable_baselines3.common.callbacks import EvalCallback
 from stable_baselines3.common.logger import configure
+from stable_baselines3.common.vec_env import VecNormalize
 from sb3_contrib import RecurrentPPO
 from src.envs.envs import make_ppo_env, linear_schedule
 from src.models.ppo import TinyLidarExtractor
@@ -19,6 +20,7 @@ def test_ppo_learning(cfg: DictConfig):
     initial_learning_rate = cfg.initial_learning_rate
     final_learniing_rate = cfg.final_learning_rate
     map_name = cfg.envs.map.name
+    num_envs = 8
     
     # --- 環境の構築 ---
     map_manager = MapManager(
@@ -42,10 +44,10 @@ def test_ppo_learning(cfg: DictConfig):
         )
 
     # 学習用
-    env = make_ppo_env(cfg.envs, map_manager, cfg.vehicle, True)
+    env = make_ppo_env(cfg.envs, map_manager, cfg.vehicle, True, num_envs=num_envs)
     
     # 評価用
-    eval_env = make_ppo_env(cfg.envs, eval_map_manager, cfg.vehicle, True)
+    eval_env = make_ppo_env(cfg.envs, eval_map_manager, cfg.vehicle, True, num_envs=1)
     
     # 評価用コールバックの更新
     eval_callback = EvalCallback(
@@ -57,10 +59,15 @@ def test_ppo_learning(cfg: DictConfig):
         deterministic=True,
         render=False
     )
+    save_stats = os.path.join(cfg.save_path, "vec_normalize.pkl")
 
     # --- モデル作成 ---
     # 既存のモデルがあるなら使う
     if os.path.exists(cfg.model_path):
+
+        if os.path.exists(cfg.model_stats):
+            env = VecNormalize.load(cfg.model_stats, env)
+
         model = RecurrentPPO.load(cfg.model_path, env=env, device="cuda")
 
         # TensorBoard の保存先を変更
@@ -97,6 +104,12 @@ def test_ppo_learning(cfg: DictConfig):
             device="cuda"
         )
 
+    # ★重要：評価環境に学習環境の統計量をコピーし、更新をオフにする
+    # これをしないと、eval_env での評価がデタラメになります
+    eval_env.obs_rms = env.obs_rms
+    eval_env.training = False # 評価中に平均・分散を更新しない
+    eval_env.norm_reward = False # 評価に報酬正規化は不要
+
     # --- 学習の試行 ---
     print("[*] 学習を開始します...")
     print(f"Training on: {map_name}")
@@ -113,6 +126,7 @@ def test_ppo_learning(cfg: DictConfig):
     os.makedirs(cfg.save_path, exist_ok=True)
     save_path = os.path.join(cfg.save_path, "final_model")
     model.save(save_path)
+    env.save(save_stats)
     
     print(f"[✔] 学習完了！モデルを {save_path} に保存しました。")
     env.close()

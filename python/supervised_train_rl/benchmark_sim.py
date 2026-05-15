@@ -8,6 +8,7 @@ from f1tenth_gym.maps.map_manager import MapManager
 from f1tenth_gym.maps.map_manager import TEST_MAPS as MAP_DICT
 # from f1tenth_gym.maps.map_manager import TRAIN_MAPS as MAP_DICT
 from stable_baselines3 import PPO
+from stable_baselines3.common.vec_env import VecNormalize
 
 @hydra.main(config_path="config", config_name="benchmark_sim", version_base="1.2")
 def main(cfg: DictConfig):
@@ -25,6 +26,14 @@ def main(cfg: DictConfig):
         smooth_sigma=cfg.envs.map.smooth_sigma
     )
     env = make_ppo_env(cfg.envs, map_manager, cfg.vehicle, False)
+
+    # 学習時の統計量の読み込み
+    stats_path = cfg.model_stats
+    if os.path.exists(stats_path):
+        env = VecNormalize.load(stats_path, env)
+        env.training = False     # 統計量を更新しない
+        env.norm_reward = False  # 報酬の正規化は不要
+        print(f"[*] Loaded normalization stats from {stats_path}")
     
     # --- PPOモデルの読み込み ---
     model = PPO.load(cfg.ckpt_path)

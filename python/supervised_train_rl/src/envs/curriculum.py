@@ -4,9 +4,9 @@ class CurriculumMapManager:
     def __init__(self):
         # 難易度順に並べたリスト（目安）
         self.all_maps = [
-            'Austin', 'Spielberg', 'MexicoCity', 'Sakhir', 'Sochi',          # Easy
-            'Hockenheim', 'Melbourne', 'Silverstone', 'YasMarina', 'Budapest', # Medium
-            'MoscowRaceway', 'Nuerburgring', 'Oschersleben', 'Sepang', 'Spa'   # Hard
+            'Spielberg', 'Melbourne', 'Silverstone',  'Sochi', 'Budapest',          # Easya
+            'Austin', 'MexicoCity', 'Sakhir', 'MoscowRaceway',  # Medium
+            'Nuerburgring', 'Oschersleben', 'Hockenheim', 'YasMarina', 'Sepang', 'Spa'   # Hard
         ]
         self.total_maps = len(self.all_maps)
 

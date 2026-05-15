@@ -6,7 +6,10 @@ from gymnasium.wrappers import RescaleAction
 from .wrapper import F110Wrapper, PPOWrapper
 from f1tenth_gym.maps.map_manager import MapManager
 from stable_baselines3.common.monitor import Monitor
-from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
+from stable_baselines3.common.vec_env import SubprocVecEnv, DummyVecEnv
+
+import numpy as np
+import random
 
 def make_env(env_cfg: DictConfig, map_manager: MapManager,  param: Dict):
     map_name = map_manager.map_path ## マップの名前 
@@ -22,33 +25,43 @@ def make_env(env_cfg: DictConfig, map_manager: MapManager,  param: Dict):
 
     return env
 
-def make_ppo_env(env_cfg, map_manager, param, training):
+def make_ppo_env(env_cfg, map_manager, param, training, num_envs=1):
     """
     PPO学習専用の環境構築フロー
     """
-    # 1. 公式のベース環境
-    env = F110Env(
-        map=map_manager.map_path, 
-        map_ext=env_cfg.map.ext, 
-        num_beams=env_cfg.num_beams, 
-        num_agents=env_cfg.num_agents, 
-        params=param
-    )
+    def _init(rank):
+        def _thunk():
+            # ベース環境の構築
+            env = F110Env(
+                map=map_manager.map_path, 
+                map_ext=env_cfg.map.ext, 
+                num_beams=env_cfg.num_beams, 
+                num_agents=env_cfg.num_agents, 
+                params=param
+            )
+            env = PPOWrapper(env, map_manager=map_manager, training=training, speed_range=8.0)
+            if training:
+                env = TimeLimit(env, max_episode_steps=10000)
+            env = RescaleAction(env, min_action=-1.0, max_action=1.0)
+            env = Monitor(env)
+            base_seed = env_cfg.get("seed", 42)
+            seed_value = base_seed + rank
+            env.action_space.seed(seed_value)
+            env.observation_space.seed(seed_value)
+            np.random.seed(seed_value)
+            random.seed(seed_value)
+            return env
+        return _thunk
 
-    # 自作ラッパー
-    env = PPOWrapper(env, map_manager=map_manager, training=training)
+    # 並列化の切り替え
+    if num_envs > 1:
+        venv = SubprocVecEnv([_init(i) for i in range(num_envs)])
+    else:
+        venv = DummyVecEnv([_init(0)])
 
-    # ステップ制限
-    if training:
-        env = TimeLimit(env, max_episode_steps=10000)
-
-    # アクションの正規化 ([-1, 1])
-    env = RescaleAction(env, min_action=-1.0, max_action=1.0)
-
-    env = Monitor(env)
-    env = DummyVecEnv([lambda: env])
-    env = VecNormalize(env, norm_reward=True, norm_obs=False)
-    return env
+    # VecNormalize はベクトル環境全体に掛ける
+    # venv = VecNormalize(venv, norm_reward=True, norm_obs=False)
+    return venv
 
 def linear_schedule(start_lr: float, end_lr: float):
     """

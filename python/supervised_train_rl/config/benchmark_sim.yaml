@@ -9,18 +9,20 @@ input_dim: 1080
 output_dim: 2
 sequence_length: 10
 ckpt_path: ./ckpts/
+model_stats: "./ckpts/.pkl"
 
 benchmark_dir: ./benchmarks/ppo
 
 
 envs:
+  seed: 42
   timestep: 0.01 ## シミュレータの時間間隔
   num_beams: 1080 ## 2d Lidarのビーム数
   beam_fov: 4.7 ## 2d Lidarの範囲 -135° ~ 135°
   max_beam_range: 30.0 ## 2d Lidarの最大距離
   num_agents: 1
   steer_range: 0.4 ## ステアリングの範囲
-  speed_range: 10.0 ## 車両の速度範囲
+  speed_range: 5.0 ## 車両の速度範囲
   render_mode: human ## human or human_fast
   map:
     name: IMS   ## マップの名前

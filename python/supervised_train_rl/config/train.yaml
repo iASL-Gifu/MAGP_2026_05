@@ -12,6 +12,7 @@ gamma: 0.993
 gae_lambda: 0.95
 
 model_path: "./ckpts/.zip"
+model_stats: "./ckpts/.pkl"
 
 # 追加：評価・保存に関する設定
 eval:
@@ -19,6 +20,7 @@ eval:
   n_eval_episodes: 5    # 評価時の試行回数（平均を取るため）
 
 envs:
+  seed: 42
   timestep: 0.01 ## シミュレータの時間間隔
   num_beams: 1080 ## 2d Lidarのビーム数
   beam_fov: 4.7 ## 2d Lidarの範囲 -135° ~ 135°

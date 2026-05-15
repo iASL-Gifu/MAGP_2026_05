@@ -221,7 +221,7 @@ class PPOWrapper(gym.Wrapper):
     強化学習 (Stable Baselines3) 専用の独立したラッパークラス。
     F110Wrapper を継承せず、多層ラッパー構造（TimeLimit等）に強い設計。
     """
-    def __init__(self, env, map_manager: MapManager, training=False):
+    def __init__(self, env, map_manager: MapManager, training=False, speed_range=10.0):
         # 親クラス (gym.Wrapper) を初期化。これにより self.env が設定されます。
         super().__init__(env)
         
@@ -232,12 +232,12 @@ class PPOWrapper(gym.Wrapper):
         self.ego_idx = inner.ego_idx
         self.map_manager = map_manager
         self.training = training
+        self.speed_range = speed_range
 
         self._waypoint_vlists = []  # ← 追加：ウェイポイント用のVertexListを保持
         self.needs_waypoint_refresh = True
 
         self.prev_steering = 0.0
-        self.prev_idx = 0
         self.noise_std = 0.05
         self.debug_count = 0
         self.speed = 0.0
@@ -245,7 +245,9 @@ class PPOWrapper(gym.Wrapper):
         # --- 観測・アクション空間の定義 ---
         self.observation_space = spaces.Dict({
             "scans": spaces.Box(low=0.0, high=35.0, shape=(inner.num_beams,), dtype=np.float32),
-            "state": spaces.Box(low=-1.0, high=1.0, shape=(2,), dtype=np.float32)
+            "state": spaces.Box(low=-1.0, high=1.0, shape=(2,), dtype=np.float32),
+            "future_curvatures": spaces.Box(low=-2.0, high=2.0, shape=(10,), dtype=np.float32),
+            "future_target_speeds": spaces.Box(low=-1.0, high=1.0, shape=(10,), dtype=np.float32),
         })
         
         self.action_space = spaces.Box(
@@ -387,63 +389,64 @@ class PPOWrapper(gym.Wrapper):
         
         return d, vs, vd, idx
 
+    def _get_target_speeds(self, curvatures):
+            """曲率配列から、物理限界に基づいた目標速度を計算します"""
+            a_lat_max = 6.0  # 許容横G。コースに合わせて 5.0~8.0 で調整
+            # ゼロ除算を避けるため微小値を足す
+            target_vs = np.sqrt(a_lat_max / (np.abs(curvatures) + 1e-6))
+            
+            # 現在のカリキュラム制限 (self.speed_range) でクリップ
+            target_vs = np.clip(target_vs, 0.0, self.speed_range)
+            
+            # モデルに渡すために -1.0 ~ 1.0 に正規化
+            half_limit = max(0.1, self.speed_range) / 2.0
+            norm_target_vs = (target_vs / half_limit) - 1.0
+            return norm_target_vs
+
     def compute_reward(self, d, vs, vd, idx, obs, info, action):
-        # 生存報酬
-        reward = 0.05
+        reward = 0.01
         terminated = False
 
         # 衝突ペナルティ
         if np.any(info.get('collision', 0) > 0):
             return -1000.0, True
         
-        # 速度報酬
-        reward += 1.0 * min(8.0, vs)
-        reward -= 0.05 * abs(vd)
+        # --- 2. 目標速度（target_v）の算出 ---
+        kappa = abs(self.map_manager.curvatures[idx])
+        a_lat_max = 6.0  # 許容横G (5.0~7.0程度で調整)
+        
+        # 物理限界速度 = sqrt(a_lat / kappa)
+        safe_v = np.sqrt(a_lat_max / (kappa + 1e-6))
+        
+        # カリキュラム学習の制限（speed_limit）と物理限界の低い方をターゲットにする
+        target_v = min(safe_v, self.speed_range)
 
-        # センターラインから逸れたら減点
+        # --- 3. 目標速度に基づく報酬 (Scoring) ---
+        # 指数関数を使い、差が0のときに最大 5.0点、離れるほど急激に減点されるようにします
+        # 式: coeff * exp( - (error^2) / variance )
+        v_error = vs - target_v
+        speed_score = 5.0 * np.exp(-(v_error**2) / 1.0) 
+        reward += speed_score
+
+        reward -= 0.01 * abs(vd)
         reward -= 0.1 * abs(d)
         
-        # 停止ペナルティ 
-        if abs(obs["linear_vels_x"][0]) <= 0.25: 
+        # 停止ペナルティ
+        if abs(obs["linear_vels_x"][0]) <= 0.25:
             reward -= 2.0
-
-        # 向心加速度ペナルティ
-        kappa = abs(self.map_manager.curvatures[idx])
-        lateral_g = (vs ** 2) * kappa
-        g_threshold = 6.0
         
-        if lateral_g > g_threshold:
-            reward -= 2.0 * (lateral_g - g_threshold)
-
-        # ターゲット速度ペナルティ
-        target_v = self.map_manager.waypoints[idx, 2] + 1.0
-        if vs > target_v:
-            # 目標速度を超えた分だけ罰則を与える
-            reward -= 1.0 * (vs - target_v)
+        # 角速度ペナルティ
+        w = obs['ang_vels_z'][0]
+        reward -= 0.05 * abs(w)
 
         # 5. 壁への接近ペナルティ
         scans = obs['scans'][0]
         min_distance = np.min(scans)
         distance_threshold = 0.5
         if min_distance < distance_threshold:
-            reward -= 0.01 * (distance_threshold - min_distance)
-
-        # 100ステップに1回、計算結果をプリント
-        if self.debug_count % 100 == 0:
-            target_v = self.map_manager.waypoints[idx, 2]
-            p_accel = max(0.0, 2.0 * (lateral_g - 6.0))
-            p_target = max(0.0, 1.0 * (vs - target_v))
-            
-            # 全ての情報を1行にまとめ、先頭に \r を付与
-            log_text = (
-                f"\r[Debug] idx:{idx:3} | vx:{obs['linear_vels_x'][0]:.2f} vs:{vs:.2f} tv:{target_v:.2f} | "
-                f"k:{kappa:.4f} | P_Acc:-{p_accel:.2f} P_Tgt:-{p_target:.2f} | Rew:{reward:.2f}" 
-            )
-            # 改行せずに上書き出力
-            print(log_text, end="", flush=True)
+            reward -= 0.1 * (distance_threshold - min_distance)
 
         return reward, terminated
-
 
     def set_training_mode(self, mode: bool):
         """学習・評価の切り替え用メソッド"""
@@ -462,9 +465,18 @@ class PPOWrapper(gym.Wrapper):
         if action.ndim == 1:
             action = action.reshape(1, -1)
 
+        steer_phys = action[0][0]
+        speed_phys = action[0][1]
+
+        # 物理的な速度を制限値（例: 3.0m/s）でクリップする
+        limited_speed = np.clip(speed_phys, 0.0, self.speed_range)
+        
+        # 制限後のアクションを再構成してシミュレータに渡す
+        limited_action = np.array([[steer_phys, limited_speed]])
+
         # 2. 直下の環境 (self.env) の step を実行
         # ここで TimeLimit があれば truncated=True が正しく返ってきます
-        obs, reward, terminated, truncated, info = self.env.step(action)
+        obs, reward, terminated, truncated, info = self.env.step(limited_action)
 
         # 3. waypoint作成と情報の抽出 (F110Wrapper の step 内にあった処理)
         current_pos = np.array([obs['poses_x'][0], obs['poses_y'][0]])
@@ -489,28 +501,47 @@ class PPOWrapper(gym.Wrapper):
         # 5. 報酬計算
         d, vs, vd, local_idx = self._get_frenet_state(current_pos, self.speed, obs['poses_theta'][0], waypoint)
         global_idx = (base_idx + local_idx) % len(self.map_manager.waypoints)
-        reward, terminated = self.compute_reward(d, vs, vd, global_idx, obs, info, action)
+
+        lookahead_steps = np.arange(5, 55, 5)
+        future_indices = (global_idx + lookahead_steps) % len(self.map_manager.waypoints)
+
+        f_curvatures = self.map_manager.curvatures[future_indices].astype(np.float32)
+        f_target_vs = self._get_target_speeds(f_curvatures)
+
+        reward, terminated = self.compute_reward(d, vs, vd, global_idx, obs, info, limited_action)
 
         # 6. 観測データの整形
-        self.last_action = np.array(action, dtype=np.float32).flatten()
+        half_limit = self.speed_range / 2.0
+        norm_steer = steer_phys / 0.4
+        norm_speed = (limited_speed / half_limit) - 1.0
+
+        self.last_action = np.array([norm_steer, norm_speed], dtype=np.float32).flatten()
         obs_dict = {
             "scans": obs['scans'][0].astype(np.float32),
-            "state": self.last_action
+            "state": self.last_action,
+            "future_curvatures": f_curvatures,
+            "future_target_speeds": f_target_vs,
         }
 
         # --- ログ表示 ---
         self.debug_count += 1
-        '''
+        
         if self.debug_count % 100 == 0:
+
+            kappa = abs(self.map_manager.curvatures[global_idx])
+            a_lat_max = 6.0  # compute_reward と値を合わせてください
+            safe_v = np.sqrt(a_lat_max / (kappa + 1e-6))
+            target_v = min(safe_v, self.speed_range)
+            
             if self.training:
 
-                print(f"\r--- [TRAIN] Step: {self.debug_count:5} | vs: {vs:5.2f} | Rew: {reward:6.2f} ---", end="")
+                print(f"\r--- [TRAIN] Step: {self.debug_count:5} | vs: {vs:5.2f} | tv: {target_v:5.2f} | Rew: {reward:6.2f} ---", end="")
                 
                 if reward < -10:
                     print(f"  !!! WARNING: Negative Reward Spike ({reward:.2f}) !!!")
             else:
-                print(f"\r[EVAL] Steps: {self.debug_count}/10000 | Speed: {vs:.2f}", end="")
-        '''
+                print(f"\r[EVAL] Steps: {self.debug_count}/10000 | Speed: {vs:.2f}| Target: {target_v:.2f}", end="")
+        
 
         return obs_dict, float(reward), terminated, truncated, info
 
@@ -550,19 +581,26 @@ class PPOWrapper(gym.Wrapper):
         obs, info = self.env.reset(seed=seed, options=options)
         
         self.prev_steering = 0.0
-        self.prev_idx = 0
         self.debug_count = 0
 
         # 初期状態の情報を取得
         current_pos = np.array([obs['poses_x'][0], obs['poses_y'][0]])
         waypoint, base_idx = self.map_manager.get_future_waypoints(current_pos, num_points=10)
         d, vs, vd, local_idx = self._get_frenet_state(current_pos, 0.0, obs['poses_theta'][0], waypoint)
+        global_idx = (base_idx + local_idx) % len(self.map_manager.waypoints)
+
+        lookahead_steps = np.arange(5, 55, 5)
+        future_indices = (global_idx + lookahead_steps) % len(self.map_manager.waypoints)
+        f_curvatures = self.map_manager.curvatures[future_indices].astype(np.float32)
+        f_target_vs = self._get_target_speeds(f_curvatures)
 
         # 観測データの整形
         self.last_action = np.array([0.0, 0.0], dtype=np.float32)
         obs_dict = {
             "scans": obs['scans'][0].astype(np.float32),
-            "state": self.last_action
+            "state": self.last_action,
+            "future_curvatures": f_curvatures,
+            "future_target_speeds": f_target_vs,
         }
         return obs_dict, info
 
